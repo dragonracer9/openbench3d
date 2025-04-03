@@ -87,10 +87,36 @@ class InstanceMasks3D:
 class PointCloud:
     def __init__(self, 
                  point_cloud_path):
-        pcd = o3d.io.read_point_cloud(point_cloud_path)
-        self.points = np.asarray(pcd.points)
+        coords, colors = self.load_pth(point_cloud_path)
+        self.points = coords
         self.num_points = self.points.shape[0]
     
     def get_homogeneous_coordinates(self):
         return np.append(self.points, np.ones((self.num_points,1)), axis = -1)
     
+    def load_pth(filepath: os.PathLike):
+        data = torch.load(filepath)
+        # print(f"datatype data: {type(data)} ----------------\n\n\n")
+        coords, colors, w = data
+        colors = (colors + 1) * 127.5
+        
+        pcd = o3d.geometry.PointCloud()
+        pcd.points = o3d.utility.Vector3dVector(coords)
+        
+        # pcd.estimate_normals()
+        # normals = np.asarray(pcd.normals)
+        
+        # debug_ld_pth(data, coords, colors, w, normals)
+        return coords, colors #, normals
+    
+    
+def debug_ld_pth(data: tuple, coords: np.ndarray , colors: np.ndarray, w: np.ndarray , normals: np.ndarray):
+    print(data)
+    print("-----------------------\n\n-----------------------\ncoords")
+    print(f"{coords} is of shape {coords.shape}")
+    print("-----------------------\n\n-----------------------\ncolors")
+    print(f"{colors} is of shape {colors.shape}")
+    print("-----------------------\n\n-----------------------\nw")
+    print(f"{w} is of shape {w.shape}")
+    print("-----------------------\n\n-----------------------\nnormals")
+    print(f"{normals} is of shape {normals.shape}")
