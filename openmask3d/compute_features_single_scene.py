@@ -41,7 +41,7 @@ def main(ctx: DictConfig):
     print(f"[INFO] Images loaded. {len(images.images)} images found.")
     
     # 3. Load the pointcloud
-    pointcloud = PointCloud(ctx.data.point_cloud_path)
+    pointcloud = PointCloud(ctx.data.point_cloud_path, ply=True)
     print(f"[INFO] Pointcloud loaded. {pointcloud.num_points} points found.")
     
     # 4. Load the camera configurations
