@@ -5,11 +5,14 @@ import pandas as pd
 from fire import Fire
 from natsort import natsorted
 from loguru import logger
-# changed path from from datasets.preprocessing.base_preprocessing import BasePreprocessing to
-from base_preprocessing import BasePreprocessing
+from datasets.preprocessing.base_preprocessing import BasePreprocessing 
 from utils.point_cloud_utils import load_ply_with_normals # I had to put it in this folder to make it works
 
-from scannet200.scannet200_constants import VALID_CLASS_IDS_200, SCANNET_COLOR_MAP_200, CLASS_LABELS_200 #copied scanned 200 inside
+from datasets.scannet200.scannet200_constants import VALID_CLASS_IDS_200, SCANNET_COLOR_MAP_200, CLASS_LABELS_200 #copied scanned 200 inside
+
+from rich.traceback import install
+install()
+
 
 # Changed configurations
 class ScannetPreprocessing(BasePreprocessing):
@@ -26,8 +29,8 @@ class ScannetPreprocessing(BasePreprocessing):
 
         self.scannet200 = scannet200
 
-        if self.scannet200:
-            self.labels_pd = pd.read_csv("/local/home/efedele/clean/Mask3D/datasets/preprocessing/scannetv2-labels.combined.tsv", sep='\t', header=0)
+        # if self.scannet200:
+        #     self.labels_pd = pd.read_csv("/local/home/efedele/clean/Mask3D/datasets/preprocessing/scannetv2-labels.combined.tsv", sep='\t', header=0)
 
         git_repo = Path(git_repo)
         self.create_label_database(git_repo)
@@ -44,7 +47,7 @@ class ScannetPreprocessing(BasePreprocessing):
             filepaths = []
             for scene in split_file:
                 filepaths.append(
-                    self.data_dir / scans_folder / scene / (scene + "_vh_clean_2.ply")
+                    self.data_dir / scans_folder / scene / (scene + "_vh_clean_2.pth")
                 )
             self.files[mode] = natsorted(filepaths)
 
@@ -112,6 +115,8 @@ class ScannetPreprocessing(BasePreprocessing):
             "raw_filepath": str(filepath),
             "file_len": -1,
         }
+        print(filebase, " ", filepath)
+        
         # reading both files and checking that they are fitting
         coords, features, _ = load_ply_with_normals(filepath)
         file_len = len(coords)

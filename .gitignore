@@ -5,3 +5,4 @@
 /ScanNet
 /resources
 **/__pycache__/
+/openmask3d/class_agnostic_mask_computation/data/processed/scannet

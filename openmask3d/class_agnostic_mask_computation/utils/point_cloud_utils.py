@@ -4,7 +4,7 @@ from typing import List, Optional, Tuple
 import numpy as np
 import open3d
 from plyfile import PlyData, PlyElement
-
+import torch
 
 def load_ply(filepath):
     with open(filepath, "rb") as f:
@@ -21,17 +21,40 @@ def load_ply(filepath):
 
 
 def load_ply_with_normals(filepath):
-    mesh = open3d.io.read_triangle_mesh(str(filepath))
-    if not mesh.has_vertex_normals():
-        mesh.compute_vertex_normals()
-    vertices = np.asarray(mesh.vertices)
-    normals = np.asarray(mesh.vertex_normals)
+    if str(filepath).endswith('.ply'):
+        mesh = open3d.io.read_triangle_mesh(str(filepath))
+        if not mesh.has_vertex_normals():
+            mesh.compute_vertex_normals()
+        vertices = np.asarray(mesh.vertices)
+        normals = np.asarray(mesh.vertex_normals)
 
-    coords, feats, labels = load_ply(filepath)
-    assert np.allclose(coords, vertices), "different coordinates"
-    feats = np.hstack((feats, normals))
+        coords, feats, labels = load_ply(filepath)
+        assert np.allclose(coords, vertices), "different coordinates"
+        feats = np.hstack((feats, normals))
 
-    return coords, feats, labels
+        return coords, feats, labels
+    
+    if str(filepath).endswith('.pth'):
+        data = torch.load(filepath)
+        # print(f"datatype data: {type(data)} ----------------\n\n\n")
+        coords, colors, labels = data
+        feats = (colors + 1) * 127.5
+        
+        pcd = open3d.geometry.PointCloud()
+        pcd.points = open3d.utility.Vector3dVector(coords)
+        pcd.estimate_normals()
+        pcd.orient_normals_towards_camera_location(pcd.get_center()) # to make normals face same direction
+        
+        mesh, _ = open3d.geometry.TriangleMesh.create_from_point_cloud_poisson(pcd) # to create watertight mesh (no idea if this is the correct type of mesh)
+        if not mesh.has_vertex_normals():
+            mesh.compute_vertex_normals()
+        vertices = np.asarray(mesh.vertices)
+        normals = np.asarray(mesh.vertex_normals)
+
+        assert np.allclose(coords, vertices), "different coordinates"
+        feats = np.hstack((feats, normals))
+
+        return coords, feats, labels
 
 
 def load_obj_with_normals(filepath):
