@@ -107,4 +107,4 @@ def reorganise_image_path(path2d: os.PathLike, path3d: os.PathLike):
    
     return
 
-reorganise_image_path("/mnt/c/users/vikra/desktop/ethz/msc_mech_eng/3dv/openmask3d/datasets/data/scannet_2d", "/mnt/c/users/vikra/desktop/ethz/msc_mech_eng/3dv/openmask3d/datasets/data/scannet_3d")
+reorganise_image_path("ABSOLUTE PATH TO DATASET 2D (.../datasets/data/scannet_2d)", "ABSOLUTE PATH TO DATASET 3D (.../datasets/data/scannet_3d)")

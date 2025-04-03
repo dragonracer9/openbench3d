@@ -86,9 +86,13 @@ class InstanceMasks3D:
     
 class PointCloud:
     def __init__(self, 
-                 point_cloud_path):
-        coords, colors = self.load_pth(point_cloud_path)
-        self.points = coords
+                 point_cloud_path, ply : bool = False):
+        if ply == True:
+            pcd = o3d.io.read_point_cloud(point_cloud_path)
+            self.points = np.asarray(pcd.points)
+        else:
+            coords, colors = self.load_pth(point_cloud_path)
+            self.points = coords
         self.num_points = self.points.shape[0]
     
     def get_homogeneous_coordinates(self):
