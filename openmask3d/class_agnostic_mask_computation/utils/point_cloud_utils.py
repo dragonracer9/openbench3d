@@ -22,6 +22,7 @@ def load_ply(filepath):
 
 def load_ply_with_normals(filepath):
     if str(filepath).endswith('.ply'):
+        print(f"loading ply {filepath}")
         mesh = open3d.io.read_triangle_mesh(str(filepath))
         if not mesh.has_vertex_normals():
             mesh.compute_vertex_normals()
@@ -35,13 +36,16 @@ def load_ply_with_normals(filepath):
         return coords, feats, labels
     
     if str(filepath).endswith('.pth'):
+        print(f"loading pth {filepath}")
         data = torch.load(filepath)
         # print(f"datatype data: {type(data)} ----------------\n\n\n")
         coords, colors, labels = data
-        feats = (colors + 1) * 127.5
+        features = (colors + 1) * 127.5
+        assert coords.size == features.size
         
         pcd = open3d.geometry.PointCloud()
         pcd.points = open3d.utility.Vector3dVector(coords)
+        pcd.colors = open3d.utility.Vector3dVector(features)
         pcd.estimate_normals()
         pcd.orient_normals_towards_camera_location(pcd.get_center()) # to make normals face same direction
         
@@ -50,6 +54,12 @@ def load_ply_with_normals(filepath):
             mesh.compute_vertex_normals()
         vertices = np.asarray(mesh.vertices)
         normals = np.asarray(mesh.vertex_normals)
+        
+        print(vertices.size, " ", normals.size)
+        print(mesh.has_vertex_colors())
+        
+        feats = np.asarray(mesh.vertex_colors)
+        print(feats.size)
 
         assert np.allclose(coords, vertices), "different coordinates"
         feats = np.hstack((feats, normals))

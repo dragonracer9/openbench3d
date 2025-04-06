@@ -50,6 +50,11 @@ class ScannetPreprocessing(BasePreprocessing):
                     self.data_dir / scans_folder / scene / (scene + "_vh_clean_2.pth")
                 )
             self.files[mode] = natsorted(filepaths)
+            print(f"length of filebase {len(filepaths)}")
+            
+        coords, features, _ = load_ply_with_normals("/mnt/c/users/vikra/desktop/ethz/msc_mech_eng/3dv/openbench3d/datasets/data/scannet_3d/scene0000_00_vh_clean_2.pth")
+        print(coords)
+        print(features)
 
     def create_label_database(self, git_repo):
         if self.scannet200:
@@ -119,15 +124,25 @@ class ScannetPreprocessing(BasePreprocessing):
         
         # reading both files and checking that they are fitting
         coords, features, _ = load_ply_with_normals(filepath)
+        assert coords.size == features.size
         file_len = len(coords)
         filebase["file_len"] = file_len
         points = np.hstack((coords, features))
 
         if mode in ["train", "validation"]:
             # getting scene information
-            description_filepath = Path(filepath).parent / filepath.name.replace(
-                "_vh_clean_2.ply", ".txt"
-            )
+            if str(filepath).endswith('.ply'):
+                description_filepath = Path(filepath).parent / filepath.name.replace(
+                    "_vh_clean_2.ply", ".txt"
+                )
+            elif str(filepath).endswith('.pth'):
+                description_filepath = Path(filepath).parent / filepath.name.replace(
+                    "_vh_clean_2.pth", ".txt"
+                )
+            else:
+                print("Neither PLY nor PTH file supplied")
+                return
+            
             with open(description_filepath) as f:
                 scene_type = f.read().split("\n")[:-1]
             scene_type = scene_type[-1].split(" = ")[1]

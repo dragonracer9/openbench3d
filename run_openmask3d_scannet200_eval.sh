@@ -10,8 +10,8 @@ set -e
 
 # --------
 # NOTE: SET THESE PARAMETERS!
-SCANS_PATH="/PATH/TO/SCANNET/SCANS"
-SCANNET_PROCESSED_DIR="/PATH/TO/scannet_processed/scannet200"
+SCANS_PATH="$(pwd)/datasets/data/scans"
+SCANNET_PROCESSED_DIR="$(pwd)/openmask3d/class_agnostic_mask_computation/data/processed/scannet"
 # model ckpt paths
 MASK_MODULE_CKPT_PATH="$(pwd)/resources/scannet200_val.ckpt"
 SAM_CKPT_PATH="$(pwd)/resources/sam_vit_h_4b8939.pth"
