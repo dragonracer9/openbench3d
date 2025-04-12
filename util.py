@@ -3,6 +3,10 @@ import os
 import shutil
 import numpy as np
 from tqdm import tqdm
+import open3d
+import torch
+import re
+
 
 ### Reorganise filepath
 def reorganise_image_path(path2d: os.PathLike, path3d: os.PathLike):
@@ -107,4 +111,45 @@ def reorganise_image_path(path2d: os.PathLike, path3d: os.PathLike):
    
     return
 
-reorganise_image_path("ABSOLUTE PATH TO DATASET 2D (.../datasets/data/scannet_2d)", "ABSOLUTE PATH TO DATASET 3D (.../datasets/data/scannet_3d)")
+
+def pth_to_ply(path3d: os.PathLike): # try to undo data-preprocessing done by openscene on the 3d files from scannet
+    with os.scandir(path3d ) as it:
+        pth_filenames = np.array([entry.name for entry in it if not entry.name.startswith('.') and entry.is_file()])
+    ply_filenames = np.array([x.replace('_vh_clean_2.pth', '_vh_clean_2.ply') for x in pth_filenames])
+    print(ply_filenames)
+    for i, file in enumerate(pth_filenames):
+        source = os.path.join(path3d + '/' + file)
+        # print(f"loading pth {source}")
+        data = torch.load(source)
+        coords, colors, labels = data
+        features = (colors + 1) * 127.5
+        assert coords.size == features.size
+        # print(f"labels: {labels}")
+        
+        pcd = open3d.geometry.PointCloud()
+        pcd.points = open3d.utility.Vector3dVector(coords)
+        pcd.colors = open3d.utility.Vector3dVector(features)
+        # pcd.orient_normals_towards_camera_location(pcd.get_center()) # to make normals face same direction
+        
+        out = os.path.join(path3d + '/' + ply_filenames[i])
+        print(f"saving to ply {out}")
+        open3d.io.write_point_cloud(out , pcd)
+        
+    return
+
+def _parse_scene_subscene(name):
+    scene_match = re.match(r"scene(\d{4})_(\d{2})_vh_clean_2.pth", name)
+    return int(scene_match.group(1)), int(scene_match.group(2))
+
+
+'''
+The function calls below bring the data from the openscene dataset into
+a) the correct file format and 
+b) the correct folder structure
+
+'''
+
+
+# pth_to_ply("ABSOLUTE PATH TO DATASET 3D (.../datasets/data/scannet_3d)")
+
+# reorganise_image_path("ABSOLUTE PATH TO DATASET 2D (.../datasets/data/scannet_2d)", "ABSOLUTE PATH TO DATASET 3D (.../datasets/data/scannet_3d)")
