@@ -37,7 +37,9 @@ bash Anaconda[YOUR VERSION].sh # Anaconda3-2024.10-1-Linux-x86_64.sh here
 
 ## Install Requirements
 
-1) Run the setup instructions as described in the [README.md](README.md) until step 3, that is,
+1) Run ```export MAX_JOBS=1``` in the terminal
+
+2) Run the setup instructions as described in the [README.md](README.md) until step 3, that is,
 ```bash
 conda create --name=openmask3d python=3.8.5 # create new virtual environment
 conda activate openmask3d # activate it
@@ -50,16 +52,17 @@ git clone --recursive "https://github.com/NVIDIA/MinkowskiEngine"
 cd MinkowskiEngine
 git checkout 02fc608bea4c0549b0a7b00ca1bf15dee4a0b228
 python setup.py install --force_cuda --blas=openblas
+cd ..
 ```
 Then, run the rest of the install script.
 
 For some reason, this doesnt import all necessary packages, and so
 
-2) Install the remaining packages `pip` says are required by other packages. **NOTE: DO NOT CHANGE THE VERSIONS OF ANY ALREADY INSTALLED PACKEGES, JUST INSTALL THOSE PACKAGES `pip` SAYS ARE REQUIRED BUT NOT INSTALLED.** Run `pip install <package>` and let its dependency resolver figure out what version is needed. Unfortunately, I can't list the packages here, as I forgot which ones they are. 
+3) Install the remaining packages `pip` says are required by other packages. **NOTE: DO NOT CHANGE THE VERSIONS OF ANY ALREADY INSTALLED PACKEGES, JUST INSTALL THOSE PACKAGES `pip` SAYS ARE REQUIRED BUT NOT INSTALLED.** Run `pip install <package>` and let its dependency resolver figure out what version is needed. Unfortunately, I can't list the packages here, as I forgot which ones they are. 
 
 **I've exported the conda environment to an [`environment.yml`](environment.yml) file which can be used to create the environment.** I cannot guarantee successful installation if installing via the ènvironemt.yml`file. More info can be found at https://docs.conda.io/projects/conda/en/latest/user-guide/tasks/manage-environments.html.
 
-3) Once all the packages are installed, run the last step of the installation process from the [README](README.md)
+4) Once all the packages are installed, run the last step of the installation process from the [README](README.md)
 ```bash
 pip install -e .  # install current repository in editable mode
 ```
