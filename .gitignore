@@ -6,3 +6,5 @@
 /resources
 **/__pycache__/
 /openmask3d/class_agnostic_mask_computation/data/processed/scannet
+/.vscode
+/openmask3d/class_agnostic_mask_computation/third_party/pointnet2
