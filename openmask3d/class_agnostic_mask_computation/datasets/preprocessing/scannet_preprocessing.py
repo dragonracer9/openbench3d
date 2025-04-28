@@ -47,14 +47,14 @@ class ScannetPreprocessing(BasePreprocessing):
             filepaths = []
             for scene in split_file:
                 filepaths.append(
-                    self.data_dir / scans_folder / scene / (scene + "_vh_clean_2.pth")
+                    self.data_dir / scans_folder / scene / (scene + "_vh_clean_2.ply")
                 )
             self.files[mode] = natsorted(filepaths)
             print(f"length of filebase {len(filepaths)}")
             
-        coords, features, _ = load_ply_with_normals("/mnt/c/users/vikra/desktop/ethz/msc_mech_eng/3dv/openbench3d/datasets/data/scannet_3d/scene0000_00_vh_clean_2.pth")
-        print(coords)
-        print(features)
+        # coords, features, _ = load_ply_with_normals("/mnt/c/users/vikra/desktop/ethz/msc_mech_eng/3dv/openbench3d/datasets/data/scannet_3d/scene0000_00_vh_clean_2.pth")
+        # print(coords)
+        # print(features)
 
     def create_label_database(self, git_repo):
         if self.scannet200:
@@ -143,6 +143,7 @@ class ScannetPreprocessing(BasePreprocessing):
                 print("Neither PLY nor PTH file supplied")
                 return
             
+            print(f"Loading description file {description_filepath}")
             with open(description_filepath) as f:
                 scene_type = f.read().split("\n")[:-1]
             scene_type = scene_type[-1].split(" = ")[1]
