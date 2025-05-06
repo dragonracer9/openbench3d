@@ -1,17 +1,11 @@
 #!/bin/bash
 
-#SBATCH --ntasks=1
-#SBATCH --ntasks-per-node=1
-#SBATCH --job-name=preprocessing
-
-#SBATCH --chdir .
 #SBATCH --account 3dv
-
+#SBATCH --job-name=preprocessing
 #SBATCH --time=48:00:00
 #SBATCH -o /home/%u/slurm_output__%x-%j.out
-
-#SBATCH --mail-type=FAIL,BEGIN,END
-#SBATCH --cpus-per-task=2
+#SBATCH --error=/home/%u/slurrm_errors__%x-%j.out
+#SBATCH --mail-type=FAIL
 #SBATCH --gpus=1
 
 set -e
@@ -19,13 +13,18 @@ set -o xtrace
 echo PWD:$(pwd)
 echo STARTING AT $(date)
 
+# Load modules
+module add cuda/11.8
+
 # Environment
 source ~/miniconda3/etc/profile.d/conda.sh
 conda activate openmask3d
 
+# Install requirements
 bash install_requirements.sh
-pip install -e .
 # ...
+
+
 
 # Run your experiment
 python -c "import torch; print('Cuda available?', torch.cuda.is_available())"

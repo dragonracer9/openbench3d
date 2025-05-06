@@ -53,3 +53,5 @@ pip install appdirs mypy-extensions pathspec toml future pydot natsort rich
 
 
 pip install -U git+https://github.com/NVIDIA/MinkowskiEngine --no-deps --no-build-isolation --config-settings="--blas_include_dirs=${CONDA_PREFIX}/include" --config-settings="--blas=openblas" 
+
+pip install -e .
