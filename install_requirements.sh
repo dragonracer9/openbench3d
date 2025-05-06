@@ -49,7 +49,7 @@ pip install  git+https://github.com/facebookresearch/segment-anything.git@6fdee8
 pip install ftfy==6.1.1
 pip install regex==2023.10.3
 
-pip install appdirs mypy-extensions pathspec toml future pydot
+pip install appdirs mypy-extensions pathspec toml future pydot natsort rich
 
 
 pip install -U git+https://github.com/NVIDIA/MinkowskiEngine --no-deps --no-build-isolation --config-settings="--blas_include_dirs=${CONDA_PREFIX}/include" --config-settings="--blas=openblas" 

@@ -28,7 +28,8 @@ def load_ply_with_normals(filepath):
             mesh.compute_vertex_normals()
         vertices = np.asarray(mesh.vertices)
         normals = np.asarray(mesh.vertex_normals)
-
+        print(normals)
+        
         coords, feats, labels = load_ply(filepath)
         assert np.allclose(coords, vertices), "different coordinates"
         feats = np.hstack((feats, normals))

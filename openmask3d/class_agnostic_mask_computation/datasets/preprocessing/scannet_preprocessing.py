@@ -29,8 +29,8 @@ class ScannetPreprocessing(BasePreprocessing):
 
         self.scannet200 = scannet200
 
-        # if self.scannet200:
-        #     self.labels_pd = pd.read_csv("/local/home/efedele/clean/Mask3D/datasets/preprocessing/scannetv2-labels.combined.tsv", sep='\t', header=0)
+        if self.scannet200:
+            self.labels_pd = pd.read_csv("/mnt/c/users/vikra/desktop/ethz/msc_mech_eng/3dv/openbench3d/scannetv2-labels.combined.tsv", sep='\t', header=0)
 
         git_repo = Path(git_repo)
         self.create_label_database(git_repo)
@@ -124,7 +124,11 @@ class ScannetPreprocessing(BasePreprocessing):
         
         # reading both files and checking that they are fitting
         coords, features, _ = load_ply_with_normals(filepath)
-        assert coords.size == features.size
+        print(coords.shape[0], features.shape[0])
+        assert coords.shape[0] == features.shape[0], "different number of points in coords and features"
+        assert coords.shape[1] == 3, "coords should be 3D"
+        assert features.shape[1] == 6, "features should be 6D"
+        
         file_len = len(coords)
         filebase["file_len"] = file_len
         points = np.hstack((coords, features))
@@ -185,7 +189,7 @@ class ScannetPreprocessing(BasePreprocessing):
                 occupied_indices = np.isin(segments, segments_occupied)
                 labels[occupied_indices, 1] = instance["id"]
 
-                if self.scannet200:
+                if self.scannet200: # FIXME uncomment when i figure out what this is for
                     label200 = instance['label']
                     # Map the category name to id
                     label_ids = self.labels_pd[self.labels_pd['raw_category'] == label200]['id']

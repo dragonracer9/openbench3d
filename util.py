@@ -112,6 +112,42 @@ def reorganise_image_path(path2d: os.PathLike, path3d: os.PathLike, filetype: st
    
     return
 
+def copy_files(src: os.PathLike, dst: os.PathLike, postfix: str = '_vh_clean_2.ply'):
+    '''
+    Copies files from source directory to corresponding destination directory within the given folder structure
+    
+    Args:
+        - src: absolute path to source directory
+        - dst: absolute path to destination directory
+    '''
+    with os.scandir(dst) as it:
+        subdirectories = np.array([entry.name for entry in it if not entry.name.startswith('.') and entry.is_dir()]).flatten()
+        # same_length = (np.array([len(x) for x in subdirectories]) == 12).all()
+        # print(same_length)
+                
+    with os.scandir(src) as it:
+        filenames = np.array([entry.name for entry in it if not entry.name.startswith('.') and entry.is_file()])
+        
+    # debug_lengths = (np.array([len(x) for x in pth_filenames]) == len('scene0000_00_vh_clean_2.pth')).all()
+    prefixes = np.array([x.replace(postfix, '') for x in filenames])
+    print(prefixes.shape==subdirectories.shape)
+    print(prefixes.dtype==subdirectories.dtype)
+    
+    dir_idxs = np.array([np.where(subdirectories==x)[0] for x in prefixes])
+     
+    for i,j in enumerate(dir_idxs):
+        print(f"Copying src/{filenames[i]} to dst/{subdirectories[j]}")
+        source = os.path.join(src + '/' + filenames[i])
+        out = os.path.join(dst, prefixes[i] + '/' + filenames[i])
+        
+        if not os.path.isfile(out):
+            shutil.copy2(source, out)
+            print(f"source: {source}, out: {out}")
+        else:
+            print("No need to copy, the file exists alr")
+    
+    return
+
 
 def pth_to_ply(path3d: os.PathLike): # try to undo data-preprocessing done by openscene on the 3d files from scannet
     with os.scandir(path3d ) as it:
@@ -241,6 +277,9 @@ a) the correct file format and
 b) the correct folder structure
 c) add metadata files to the dataset used for preprocessing
 '''
+
+# copy_files("ABSOLUTE PATH TO DATA", "ABSOLUTE PATH TO DATASET")
+
 # verify_number_of_files("ABSOLUTE PATH TO DATASET (.../datasets/data)", 9, breakpt=0, verbose=True)
 
 # add_metadata("ABSOLUTE PATH TO METADATA FILES (eg., .../datasets/metadata)", "ABSOLUTE PATH TO DATASET (.../datasets/data/scans)")
