@@ -12,6 +12,12 @@ set -e
 ## UPDATE: following commands also run with CUDA 11.3
 
 #Note: pip-24 or earlier is required for install
+conda install "cuda-nvcc==11.3.*" "cuda-libraries-dev==11.3.*" -c nvidia
+conda install openblas
+conda update libgcc
+pip install pybind11
+
+
 pip install pip==24.0
 
 pip install torch==1.12.1 torchvision==0.13.1 -f https://download.pytorch.org/whl/cu113/torch_stable.html
@@ -49,7 +55,9 @@ pip install  git+https://github.com/facebookresearch/segment-anything.git@6fdee8
 pip install ftfy==6.1.1
 pip install regex==2023.10.3
 
-pip install appdirs mypy-extensions pathspec toml future pydot
+pip install appdirs mypy-extensions pathspec toml future pydot natsort rich
 
 
 pip install -U git+https://github.com/NVIDIA/MinkowskiEngine --no-deps --no-build-isolation --config-settings="--blas_include_dirs=${CONDA_PREFIX}/include" --config-settings="--blas=openblas" 
+
+pip install -e .
