@@ -12,6 +12,8 @@ set -e
 ## UPDATE: following commands also run with CUDA 11.3
 
 #Note: pip-24 or earlier is required for install
+conda install "cuda-nvcc==11.8.*" "cuda-libraries-dev==11.8.*" -c nvidia
+
 pip install pip==24.0
 
 pip install torch==1.12.1 torchvision==0.13.1 -f https://download.pytorch.org/whl/cu113/torch_stable.html
