@@ -14,7 +14,7 @@ echo PWD:$(pwd)
 echo STARTING AT $(date)
 
 # Load modules
-module add cuda/11.8
+# module add cuda/11.8
 
 # Environment
 source ~/miniconda3/etc/profile.d/conda.sh

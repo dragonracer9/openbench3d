@@ -12,7 +12,7 @@ set -e
 ## UPDATE: following commands also run with CUDA 11.3
 
 #Note: pip-24 or earlier is required for install
-conda install "cuda-nvcc==11.8.*" "cuda-libraries-dev==11.8.*" -c nvidia
+conda install "cuda-nvcc==11.3.*" "cuda-libraries-dev==11.3.*" -c nvidia
 
 pip install pip==24.0
 
