@@ -3,8 +3,8 @@
 #SBATCH --account 3dv
 #SBATCH --job-name=preprocessing
 #SBATCH --time=48:00:00
-#SBATCH -o /home/%u/slurm_output__%x-%j.out
-#SBATCH --error=/home/%u/slurrm_errors__%x-%j.out
+#SBATCH -o /home/%u/slurm_output_%x-%j.out
+
 #SBATCH --mail-type=FAIL
 #SBATCH --gpus=1
 
