@@ -13,6 +13,9 @@ set -e
 
 #Note: pip-24 or earlier is required for install
 conda install "cuda-nvcc==11.3.*" "cuda-libraries-dev==11.3.*" -c nvidia
+conda install openblas
+pip install pybind11
+
 
 pip install pip==24.0
 
