@@ -30,7 +30,7 @@ class ScannetPreprocessing(BasePreprocessing):
         self.scannet200 = scannet200
 
         if self.scannet200:
-            self.labels_pd = pd.read_csv("/mnt/c/users/vikra/desktop/ethz/msc_mech_eng/3dv/openbench3d/scannetv2-labels.combined.tsv", sep='\t', header=0)
+            self.labels_pd = pd.read_csv("tsv file path", sep='\t', header=0)
 
         git_repo = Path(git_repo)
         self.create_label_database(git_repo)
@@ -51,10 +51,6 @@ class ScannetPreprocessing(BasePreprocessing):
                 )
             self.files[mode] = natsorted(filepaths)
             print(f"length of filebase {len(filepaths)}")
-            
-        # coords, features, _ = load_ply_with_normals("/mnt/c/users/vikra/desktop/ethz/msc_mech_eng/3dv/openbench3d/datasets/data/scannet_3d/scene0000_00_vh_clean_2.pth")
-        # print(coords)
-        # print(features)
 
     def create_label_database(self, git_repo):
         if self.scannet200:
