@@ -4,15 +4,15 @@ data:
     masks_path: '/cluster/scratch/efedele/masks' #scannet200
     masks_suffix: '*_masks.pt'
   camera:
-    poses_path: 'data/pose/'
-    intrinsic_path: 'data/intrinsic/intrinsic_color.txt'
+    poses_path: 'pose/'
+    intrinsic_path: 'intrinsic/intrinsics.txt'
     intrinsic_resolution: [968, 1296]
   depths:
-    depths_path: 'data_compressed/depth/'
+    depths_path: 'depth/'
     depths_ext: '.png'
     depth_scale: 1000
   images:
-    images_path: 'data_compressed/color/'  
+    images_path: 'color/'  
     images_ext: '.jpg'
 
 openmask3d:

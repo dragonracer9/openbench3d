@@ -22,6 +22,7 @@ def main(ctx: DictConfig):
     masks_paths = sorted(glob(os.path.join(ctx.data.masks.masks_path, ctx.data.masks.masks_suffix)))
     
     for masks_path in masks_paths:
+    # for masks_path in masks_paths[:10]: # DEBUG: limit to 10 scenes
         
         scene_num_str = masks_path.split('/')[-1][5:12]
         path = os.path.join(ctx.data.scans_path, 'scene'+ scene_num_str)
@@ -31,6 +32,8 @@ def main(ctx: DictConfig):
         images_path = os.path.join(path, ctx.data.images.images_path)
         depths_path = os.path.join(path, ctx.data.depths.depths_path)
         
+        # TODO: Implement inpainting here
+
         # 1. Load the masks
         masks = InstanceMasks3D(masks_path) 
 
@@ -41,7 +44,7 @@ def main(ctx: DictConfig):
                         indices=indices)
 
         # 3. Load the pointcloud
-        pointcloud = PointCloud(point_cloud_path)
+        pointcloud = PointCloud(point_cloud_path, True)
 
         # 4. Load the camera configurations
         camera = Camera(intrinsic_path=intrinsic_path, 

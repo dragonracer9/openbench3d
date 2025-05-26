@@ -10,26 +10,26 @@ set -e
 # --------
 # NOTE: SET THESE PARAMETERS BASED ON YOUR SCENE!
 # data paths
-SCENE_DIR="$(pwd)/resources/scene_example"
+SCENE_DIR="/home/ninol/openbench3d/data/scans/scene0000_00"
 SCENE_POSE_DIR="${SCENE_DIR}/pose"
-SCENE_INTRINSIC_PATH="${SCENE_DIR}/intrinsic/intrinsic_color.txt"
-SCENE_INTRINSIC_RESOLUTION="[968,1296]" # change if your intrinsics are based on another resolution
-SCENE_PLY_PATH="${SCENE_DIR}/scene_example.ply"
+SCENE_INTRINSIC_PATH="${SCENE_DIR}/intrinsic/intrinsics.txt"
+SCENE_INTRINSIC_RESOLUTION="[968,1296]"  # or the resolution in your intrinsic file
+SCENE_PLY_PATH="${SCENE_DIR}/scene0000_00_vh_clean_2.ply"
 SCENE_COLOR_IMG_DIR="${SCENE_DIR}/color"
 SCENE_DEPTH_IMG_DIR="${SCENE_DIR}/depth"
 IMG_EXTENSION=".jpg"
 DEPTH_EXTENSION=".png"
 DEPTH_SCALE=1000
 # model ckpt paths
-MASK_MODULE_CKPT_PATH="$(pwd)/resources/scannet200_model.ckpt"
+MASK_MODULE_CKPT_PATH="$(pwd)/resources/scannet200_val.ckpt"
 SAM_CKPT_PATH="$(pwd)/resources/sam_vit_h_4b8939.pth"
 # output directories to save masks and mask features
 EXPERIMENT_NAME="experiment"
 OUTPUT_DIRECTORY="$(pwd)/output"
 TIMESTAMP=$(date +"%Y-%m-%d-%H-%M-%S")
 OUTPUT_FOLDER_DIRECTORY="${OUTPUT_DIRECTORY}/${TIMESTAMP}-${EXPERIMENT_NAME}"
-SAVE_VISUALIZATIONS=false #if set to true, saves pyviz3d visualizations
-SAVE_CROPS=false 
+SAVE_VISUALIZATIONS=true #if set to true, saves pyviz3d visualizations
+SAVE_CROPS=true 
 # gpu optimization
 OPTIMIZE_GPU_USAGE=false
 

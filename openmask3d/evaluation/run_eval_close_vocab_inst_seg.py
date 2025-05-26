@@ -4,7 +4,7 @@ import clip
 import torch
 import pdb
 from eval_semantic_instance import evaluate
-from scannet_constants import SCANNET_COLOR_MAP_20, VALID_CLASS_IDS_20, CLASS_LABELS_20, SCANNET_COLOR_MAP_200, VALID_CLASS_IDS_200, CLASS_LABELS_200
+from scannet_constants import SCANNET_COLOR_MAP_20, VALID_CLASS_IDS_20, CLASS_LABELS_20, SCANNET_COLOR_MAP_200, VALID_CLASS_IDS_200, CLASS_LABELS_200, SYNONYMS_SCANNET_200
 import tqdm
 import argparse
 
@@ -25,8 +25,16 @@ class InstSegEvaluator():
             label_list[-1] = 'other' # replace otherfurniture with other, following OpenScene
         elif dataset_type == 'scannet200':
             label_list = list(CLASS_LABELS_200)
+        elif dataset_type == 'scannet200_synonyms':
+            label_list = list(SYNONYMS_SCANNET_200)
+            sentence_list = []
+            for idx, synonym_list in enumerate(label_list):
+                sentence_list.append(*[sentence_structure.format(label) for label in synonym_list])
+            return sentence_list
+        
         else:
             raise NotImplementedError
+        
         return [sentence_structure.format(label) for label in label_list]
 
     def get_clip_model(self, clip_model_type):
@@ -138,6 +146,7 @@ def test_pipeline_full_scannet200(mask_features_dir,
     preds = {}
 
     for scene_name in tqdm.tqdm(scene_names[:]):
+    # for scene_name in tqdm.tqdm(scene_names[:10]):
 
         scene_id = scene_name[5:]
 
@@ -166,7 +175,7 @@ if __name__ == '__main__':
     parser.add_argument('--mask_pred_dir', type=str, help='path to the saved class agnostic masks')
     parser.add_argument('--mask_features_dir', type=str, help='path to the saved mask features')
     parser.add_argument('--feature_file_template', type=str, default="{}_openmask3d_features.npy")
-    parser.add_argument('--sentence_structure', type=str, default="a {} in a scene", help='sentence structure for 3D closed-set evaluation')
+    parser.add_argument('--sentence_structure', type=str, default="a {} in a scene", help='sentence structure for 3D closed-set evaluation') # "a photo of a {}"
     parser.add_argument('--scene_list_file', type=str, default="evaluation/val_scenes_scannet200.txt")
     parser.add_argument('--masks_template', type=str, default="_masks.pt")
 

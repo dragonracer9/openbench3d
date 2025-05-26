@@ -5,11 +5,19 @@ import imageio
 import torch
 import math
 import os
+import glob
 
 def get_number_of_images(poses_path):
     i = 0
     while(os.path.isfile(os.path.join(poses_path, str(i) + '.txt'))): i += 1
+    if i < 10:
+        print(f"[WARNING]: {i} images found in {poses_path}. This is less than 10. Check the path.")
     return i
+
+# # More robust way to get the number of images, allows for gaps
+# def get_number_of_images(poses_path):
+#     return len(glob.glob(os.path.join(poses_path, "*.txt")))
+
 
 class Camera:
     def __init__(self, 
@@ -91,7 +99,7 @@ class PointCloud:
             pcd = o3d.io.read_point_cloud(point_cloud_path)
             self.points = np.asarray(pcd.points)
         else:
-            coords, colors = self.load_pth(point_cloud_path)
+            coords, colors = PointCloud.load_pth(point_cloud_path)
             self.points = coords
         self.num_points = self.points.shape[0]
     
