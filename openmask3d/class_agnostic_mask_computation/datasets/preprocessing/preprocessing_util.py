@@ -15,9 +15,9 @@ from rich.traceback import install
 install()
 
 def test_preprocessing_single_scene():
-    data_dir = "/mnt/c/users/vikra/desktop/ethz/msc_mech_eng/3dv/openbench3d/datasets/data/scans"
-    save_dir = "/mnt/c/users/vikra/desktop/ethz/msc_mech_eng/3dv/openbench3d/datasets/data/scans_processed_test"
-    git_repo_dir = "/mnt/c/users/vikra/desktop/ethz/msc_mech_eng/3dv/openbench3d/ScanNet"
+    data_dir = "scans"
+    save_dir = "out"
+    git_repo_dir = "openbench3d/ScanNet"
     
     mode = "train"
     scene_id = "scene0000_00"
