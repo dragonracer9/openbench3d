@@ -21,8 +21,21 @@ def main(ctx: DictConfig):
     print(f"[INFO] Saving feature results to {out_folder}")
     masks_paths = sorted(glob(os.path.join(ctx.data.masks.masks_path, ctx.data.masks.masks_suffix)))
     
+    # subsample 50 masks at random and save their original indices
+    print(f"[INFO] Found {len(masks_paths)} masks in total.")
+    if len(masks_paths) < 50:
+        print(f"[WARNING] Less than 50 masks found, using all {len(masks_paths)} masks.")
+        indices = np.arange(len(masks_paths))
+    else:
+        print(f"[INFO] Subsampling to 50 masks.")
+        # Randomly select 50 indices without replacement
+        indices = np.random.choice(len(masks_paths), size=50, replace=False)
+        masks_paths = [masks_paths[i] for i in indices]
+        names = [os.path.basename(masks_paths[i]) for i in indices]
+    print(f"[INFO] Selected masks: {names}, indices: {indices}")
+    
+    
     for masks_path in masks_paths:
-        
         scene_num_str = masks_path.split('/')[-1][5:12]
         path = os.path.join(ctx.data.scans_path, 'scene'+ scene_num_str)
         poses_path = os.path.join(path,ctx.data.camera.poses_path)

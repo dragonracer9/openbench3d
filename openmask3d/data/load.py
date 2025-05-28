@@ -86,7 +86,7 @@ class InstanceMasks3D:
     
 class PointCloud:
     def __init__(self, 
-                 point_cloud_path, ply : bool = False):
+                 point_cloud_path, ply : bool = True):
         if ply == True:
             pcd = o3d.io.read_point_cloud(point_cloud_path)
             self.points = np.asarray(pcd.points)

@@ -20,8 +20,8 @@ EXPERIMENT_NAME="scannet200"
 OUTPUT_DIRECTORY="$(pwd)/output"
 TIMESTAMP=$(date +"%Y-%m-%d-%H-%M-%S")
 OUTPUT_FOLDER_DIRECTORY="${OUTPUT_DIRECTORY}/${TIMESTAMP}-${EXPERIMENT_NAME}"
-MASK_SAVE_DIR="${OUTPUT_FOLDER_DIRECTORY}/masks"
-MASK_FEATURE_SAVE_DIR="${OUTPUT_FOLDER_DIRECTORY}/mask_features"
+MASK_SAVE_DIR="/mnt/c/Users/vikra/Desktop/ETHZ/MSc_Mech_Eng/3dv/openbench3d/output/2025-05-20-01-00-59-scannet200/masks" # "${OUTPUT_FOLDER_DIRECTORY}/masks"
+MASK_FEATURE_SAVE_DIR="/mnt/c/Users/vikra/Desktop/ETHZ/MSc_Mech_Eng/3dv/openbench3d/output/2025-05-20-01-00-59-scannet200/mask_features" # "${OUTPUT_FOLDER_DIRECTORY}/mask_features"
 SAVE_VISUALIZATIONS=false #if set to true, saves pyviz3d visualizations
 
 # Paremeters below are AUTOMATICALLY set based on the parameters above:
@@ -32,25 +32,25 @@ OPTIMIZE_GPU_USAGE=false
 
 cd openmask3d
 
-# 1.Compute class agnostic masks and save them
-python class_agnostic_mask_computation/get_masks_scannet200.py \
-general.experiment_name=${EXPERIMENT_NAME} \
-general.project_name="scannet200" \
-general.checkpoint=${MASK_MODULE_CKPT_PATH} \
-general.train_mode=false \
-model.num_queries=150 \
-general.use_dbscan=true \
-general.dbscan_eps=0.95 \
-general.save_visualizations=${SAVE_VISUALIZATIONS} \
-data.test_dataset.data_dir=${SCANNET_PROCESSED_DIR}  \
-data.validation_dataset.data_dir=${SCANNET_PROCESSED_DIR} \
-data.train_dataset.data_dir=${SCANNET_PROCESSED_DIR} \
-data.train_dataset.label_db_filepath=${SCANNET_LABEL_DB_PATH} \
-data.validation_dataset.label_db_filepath=${SCANNET_LABEL_DB_PATH} \
-data.test_dataset.label_db_filepath=${SCANNET_LABEL_DB_PATH}  \
-general.mask_save_dir=${MASK_SAVE_DIR} \
-hydra.run.dir="${OUTPUT_FOLDER_DIRECTORY}/hydra_outputs/class_agnostic_mask_computation"
-echo "[INFO] Mask computation done!"
+# # 1.Compute class agnostic masks and save them
+# python class_agnostic_mask_computation/get_masks_scannet200.py \
+# general.experiment_name=${EXPERIMENT_NAME} \
+# general.project_name="scannet200" \
+# general.checkpoint=${MASK_MODULE_CKPT_PATH} \
+# general.train_mode=false \
+# model.num_queries=150 \
+# general.use_dbscan=true \
+# general.dbscan_eps=0.95 \
+# general.save_visualizations=${SAVE_VISUALIZATIONS} \
+# data.test_dataset.data_dir=${SCANNET_PROCESSED_DIR}  \
+# data.validation_dataset.data_dir=${SCANNET_PROCESSED_DIR} \
+# data.train_dataset.data_dir=${SCANNET_PROCESSED_DIR} \
+# data.train_dataset.label_db_filepath=${SCANNET_LABEL_DB_PATH} \
+# data.validation_dataset.label_db_filepath=${SCANNET_LABEL_DB_PATH} \
+# data.test_dataset.label_db_filepath=${SCANNET_LABEL_DB_PATH}  \
+# general.mask_save_dir=${MASK_SAVE_DIR} \
+# hydra.run.dir="${OUTPUT_FOLDER_DIRECTORY}/hydra_outputs/class_agnostic_mask_computation"
+# echo "[INFO] Mask computation done!"
 # get the path of the saved masks
 echo "[INFO] Masks saved to ${MASK_SAVE_DIR}."
 

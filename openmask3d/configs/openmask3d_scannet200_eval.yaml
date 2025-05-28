@@ -6,7 +6,7 @@ data:
   camera:
     poses_path: 'data/pose/'
     intrinsic_path: 'data/intrinsic/intrinsic_color.txt'
-    intrinsic_resolution: [968, 1296]
+    intrinsic_resolution: [240, 320]
   depths:
     depths_path: 'data_compressed/depth/'
     depths_ext: '.png'
@@ -20,7 +20,7 @@ openmask3d:
   multi_level_expansion_ratio: 0.1
   num_of_levels: 3
   vis_threshold: 0.2
-  frequency: 10
+  frequency: 1
   num_random_rounds: 10
   num_selected_points: 5
 
