@@ -95,6 +95,7 @@ RESUME_FROM=$1
 if [[ "$RESUME_FROM" == "step1" || "$RESUME_FROM" == "step2" ]]; then
     # RESUME FROM PREVIOUS TIMESTAMP
     PREVIOUS_RUN="2025-05-16-19-25-19-scannet200"
+    PREVIOUS_RUN="siglip"
     OUTPUT_FOLDER_DIRECTORY="${OUTPUT_DIRECTORY}/${PREVIOUS_RUN}"
     MASK_SAVE_DIR="${OUTPUT_FOLDER_DIRECTORY}/masks"
     MASK_FEATURE_SAVE_DIR="${OUTPUT_FOLDER_DIRECTORY}/mask_features"
@@ -150,9 +151,17 @@ else
     echo "[INFO] Skipping STEP 2 (Feature Computation)"
 fi
 
+# echo "[INFO] Running STEP 3: Evaluation"
+# python evaluation/run_eval_close_vocab_inst_seg.py \
+#     --gt_dir=${SCANNET_INSTANCE_GT_DIR} \
+#     --mask_pred_dir=${MASK_SAVE_DIR} \
+#     --mask_features_dir=${MASK_FEATURE_SAVE_DIR}
+# echo "[INFO] Evaluation complete"
+
 echo "[INFO] Running STEP 3: Evaluation"
-python evaluation/run_eval_close_vocab_inst_seg.py \
+python evaluation/run_eval_close_vocab_inst_seg_siglip.py \
     --gt_dir=${SCANNET_INSTANCE_GT_DIR} \
     --mask_pred_dir=${MASK_SAVE_DIR} \
-    --mask_features_dir=${MASK_FEATURE_SAVE_DIR}
+    --mask_features_dir=${MASK_FEATURE_SAVE_DIR} \
+    --model_type='google/siglip-base-patch16-384'
 echo "[INFO] Evaluation complete"

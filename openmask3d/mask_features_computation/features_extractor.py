@@ -103,6 +103,145 @@ class PointProjector:
         topk_indices_per_mask = np.argsort(-num_points_in_view_in_mask, axis=0)[:k,:].T
         return topk_indices_per_mask
     
+    def debug_occlusion_for_mask_in_view(self, target_mask_idx, view_idx_in_projector_list, images_obj, num_points_to_debug=5):
+        import imageio # For loading depth
+        import os
+        import matplotlib.pyplot as plt
+        import numpy as np # Ensure numpy is imported
+
+        print(f"\n--- Debugging Occlusion for Mask {target_mask_idx} in View (Projector Index {view_idx_in_projector_list}) ---")
+
+        # Get the original image file index and pose for this view
+        original_file_idx = self.indices[view_idx_in_projector_list]
+        
+        # Ensure poses are loaded and accessible. Assuming self.camera.poses is populated correctly by Camera class
+        # and corresponds to self.indices used by PointProjector.
+        # if self.camera.poses is None or len(self.camera.poses) <= view_idx_in_projector_list:
+        #     print(f"ERROR: Poses not available or insufficient for view_idx_in_projector_list {view_idx_in_projector_list}")
+        #     # Attempt to load poses for the specific indices if not already done broadly
+        #     # This might be redundant if Camera class loads them all based on self.indices
+        #     try:
+        #         self.camera.load_poses(self.indices) # Ensure poses for all relevant views are loaded
+        #         if len(self.camera.poses) <= view_idx_in_projector_list: # Check again
+        #              print("ERROR: Still poses not available after attempting load.")
+        #              return
+        #     except Exception as e:
+        #         print(f"ERROR: Failed to load poses: {e}")
+        #         return
+        
+        # pose = self.camera.poses[view_idx_in_projector_list]
+
+        # Get 3D points for the target mask
+        # self.masks.masks should be (num_total_points, num_masks)
+        mask_3d_point_indices_in_cloud = np.where(self.masks.masks[:, target_mask_idx] > 0)[0]
+
+        if len(mask_3d_point_indices_in_cloud) == 0:
+            print(f"Mask {target_mask_idx} has no 3D points. Cannot debug occlusion.")
+            return
+
+        # Select a few points from the mask to debug
+        points_to_debug_indices_in_cloud = mask_3d_point_indices_in_cloud[:num_points_to_debug]
+        selected_3d_points = self.point_cloud.points[points_to_debug_indices_in_cloud]
+        # self.point_cloud.X should be (num_total_points, 4)
+        selected_3d_points_homogeneous = self.point_cloud.X[points_to_debug_indices_in_cloud, :]
+
+        print(f"Debugging {len(selected_3d_points)} points from mask {target_mask_idx}.")
+        print(f"Point indices in cloud: {points_to_debug_indices_in_cloud}")
+
+
+        # Load sensor depth for this view
+        depth_path = os.path.join(self.camera.depths_path, str(original_file_idx) + self.camera.extension_depth) # Use camera's depth extension
+        if not os.path.exists(depth_path):
+            print(f"ERROR: Depth image not found at {depth_path}")
+            return
+        
+        try:
+            sensor_depth_map_raw = imageio.imread(depth_path)
+        except Exception as e:
+            print(f"ERROR: Could not read depth image {depth_path}: {e}")
+            return
+            
+        sensor_depth_map = sensor_depth_map_raw / self.camera.depth_scale
+        height, width = sensor_depth_map.shape
+        intrinsic_matrix = self.camera.get_adapted_intrinsic((height, width))
+
+        # Load the corresponding color image for visualization
+        color_image_pil = None
+        if images_obj and view_idx_in_projector_list < len(images_obj.images):
+            color_image_pil = images_obj.images[view_idx_in_projector_list]
+            plt.figure(figsize=(10, 8))
+            plt.imshow(color_image_pil)
+            plt.title(f"Debug View: Mask {target_mask_idx}, Proj. Idx {view_idx_in_projector_list} (Orig File Idx {original_file_idx})")
+            projected_debug_points_x = []
+            projected_debug_points_y = []
+            colors_for_debug_points = []
+            labels_for_debug_points = []
+        else:
+            print("Color image not available for this view index or Images object not provided.")
+
+
+        for i, point_idx_in_cloud in enumerate(points_to_debug_indices_in_cloud):
+            point_3d = selected_3d_points[i]
+            point_3d_homogeneous = selected_3d_points_homogeneous[i]
+
+            print(f"\n  Point {i+1} (Cloud Index: {point_idx_in_cloud}): 3D Coords {point_3d}")
+
+            # Project point
+            projected_homogeneous = (intrinsic_matrix @ pose @ point_3d_homogeneous.T).T # Should be (4,) then (3,)
+            
+            calculated_depth_from_projection = projected_homogeneous[2]
+            print(f"    Projected Homogeneous (after Intrinsic@Pose@X.T): {projected_homogeneous}")
+            print(f"    Calculated Depth from Projection (Z_cam): {calculated_depth_from_projection:.4f}")
+
+            if calculated_depth_from_projection == 0:
+                print("    Point projects to camera center (depth 0) or behind. Skipping further checks for this point.")
+                if color_image_pil:
+                    labels_for_debug_points.append(f"P{i+1}\nDepth=0")
+                    # Add a placeholder if you want to plot it, e.g., at (0,0)
+                    projected_debug_points_x.append(0) 
+                    projected_debug_points_y.append(0)
+                    colors_for_debug_points.append('blue')
+                continue
+
+            u_coord = projected_homogeneous[0] / calculated_depth_from_projection
+            v_coord = projected_homogeneous[1] / calculated_depth_from_projection
+            print(f"    Projected 2D Coords (u,v) in pixels: ({u_coord:.2f}, {v_coord:.2f})")
+
+            # Check if inside image bounds
+            if 0 <= u_coord < width and 0 <= v_coord < height:
+                u_int, v_int = int(u_coord), int(v_coord)
+                sensor_depth_at_uv = sensor_depth_map[v_int, u_int]
+                depth_diff = abs(sensor_depth_at_uv - calculated_depth_from_projection)
+                is_visible_occlusion_check = depth_diff <= self.vis_threshold
+
+                print(f"    Sensor Depth at ({u_int},{v_int}): {sensor_depth_at_uv:.4f}")
+                print(f"    Depth Difference: {depth_diff:.4f} (Threshold: {self.vis_threshold})")
+                print(f"    Point Considered Visible (Occlusion Check): {is_visible_occlusion_check}")
+                
+                if color_image_pil:
+                    projected_debug_points_x.append(u_int)
+                    projected_debug_points_y.append(v_int)
+                    colors_for_debug_points.append('lime' if is_visible_occlusion_check else 'magenta')
+                    labels_for_debug_points.append(f"P{i+1}\nVis:{is_visible_occlusion_check}\nS_D:{sensor_depth_at_uv:.2f}\nP_D:{calculated_depth_from_projection:.2f}")
+
+            else:
+                print("    Point projects outside image bounds.")
+                if color_image_pil: # Mark it outside
+                    projected_debug_points_x.append(u_coord) # Plot actual coords even if outside
+                    projected_debug_points_y.append(v_coord)
+                    colors_for_debug_points.append('cyan')
+                    labels_for_debug_points.append(f"P{i+1}\nOut")
+
+        if color_image_pil and projected_debug_points_x:
+            plt.scatter(projected_debug_points_x, projected_debug_points_y, c=colors_for_debug_points, s=60, edgecolors='black', zorder=10)
+            for j, txt in enumerate(labels_for_debug_points):
+                plt.text(projected_debug_points_x[j]+5, projected_debug_points_y[j]+5, txt, fontsize=7, color='white', bbox=dict(facecolor='black', alpha=0.5))
+            plt.xlim(0, width)
+            plt.ylim(height, 0) # Standard image coordinates
+            plt.show()
+        elif color_image_pil:
+             plt.show() # Show empty image if no points made it to plotting stage
+    
 class FeaturesExtractor:
     def __init__(self, 
                  camera, 
@@ -158,13 +297,21 @@ class FeaturesExtractor:
                     for level in range(num_levels):
                         # get the bbox and corresponding crops
                         x1, y1, x2, y2 = mask2box_multi_level(torch.from_numpy(best_mask), level, multi_level_expansion_ratio)
+                        
+                        print("Uncropped size:", self.images.images[view].size)
+
                         cropped_img = self.images.images[view].crop((x1, y1, x2, y2))
+                        
+                        print("Crop size:", cropped_img.size)
                         
                         if(save_crops):
                             cropped_img.save(os.path.join(out_folder, f"crop{mask}_{view}_{level}.png"))
                             
                         # I compute the CLIP feature using the standard clip model
                         cropped_img_processed = self.clip_preprocess(cropped_img)
+
+                        print("Processed crop size:", cropped_img_processed.size())
+                        
                         images_crops.append(cropped_img_processed)
             
             if(optimize_gpu_usage):
@@ -180,4 +327,157 @@ class FeaturesExtractor:
                     
         return mask_clip
         
-    
+    def debug_mask_features(self, target_mask_idx, topk, 
+                            multi_level_expansion_ratio, num_levels, 
+                            num_random_rounds, num_selected_points, 
+                            display_point_cloud=True):
+        import matplotlib.pyplot as plt
+        import open3d as o3d
+        from PIL import ImageDraw # For drawing on images
+        import numpy as np # Ensure numpy is imported
+        import torch # Ensure torch is imported
+
+        print(f"--- Debugging Mask Index: {target_mask_idx} ---")
+
+         # Get the 3D points for the target mask
+        # self.point_projector.masks.masks is (num_total_points, num_masks) boolean or float
+        # self.point_projector.point_cloud.points is (num_total_points, 3)
+        mask_point_indices_in_cloud = np.where(self.point_projector.masks.masks[:, target_mask_idx] > 0)[0]
+        num_points_in_mask = len(mask_point_indices_in_cloud)
+        print(f"Number of 3D points in target mask {target_mask_idx}: {num_points_in_mask}")
+
+        if num_points_in_mask > 0:
+            mask_points_3d = self.point_projector.point_cloud.points[mask_point_indices_in_cloud]
+            
+            # Visualize the isolated 3D mask
+            if display_point_cloud:
+                isolated_mask_pcd = o3d.geometry.PointCloud()
+                isolated_mask_pcd.points = o3d.utility.Vector3dVector(mask_points_3d)
+                isolated_mask_pcd.paint_uniform_color([0.0, 1.0, 0.0]) # Green for isolated mask
+                print(f"Visualizing isolated 3D mask {target_mask_idx} (GREEN). Close window to continue.")
+                o3d.visualization.draw_geometries([isolated_mask_pcd], 
+                                                  window_name=f"Isolated Mask {target_mask_idx} ({num_points_in_mask} points)")
+        else:
+            print(f"Target mask {target_mask_idx} is empty in 3D (contains no points).")
+            mask_points_3d = np.array([]) # Ensure it's an empty array for consistency if needed later
+
+        # 0. Optionally display the full point cloud with the target mask highlighted
+        if display_point_cloud:
+            pcd_original_o3d = o3d.geometry.PointCloud()
+            pcd_original_o3d.points = o3d.utility.Vector3dVector(self.point_projector.point_cloud.points)
+            
+            # mask_points_3d is already defined above
+            geometries_to_draw = [pcd_original_o3d]
+            if num_points_in_mask > 0: # Use num_points_in_mask check
+                mask_pcd_highlight = o3d.geometry.PointCloud()
+                mask_pcd_highlight.points = o3d.utility.Vector3dVector(mask_points_3d)
+                mask_pcd_highlight.paint_uniform_color([1.0, 0.0, 0.0]) # Red for highlight in full scene
+                geometries_to_draw.append(mask_pcd_highlight)
+                print(f"Visualizing full point cloud. Target mask {target_mask_idx} (if points exist) is in RED.")
+            else:
+                print(f"Target mask {target_mask_idx} has no points in 3D to highlight in the full scene. Visualizing only full point cloud.")
+            o3d.visualization.draw_geometries(geometries_to_draw, 
+                                              window_name=f"Full Scene - Target Mask {target_mask_idx}")
+
+        all_topk_indices = self.point_projector.get_top_k_indices_per_mask(topk)
+        
+        if target_mask_idx >= all_topk_indices.shape[0]:
+            print(f"ERROR: target_mask_idx {target_mask_idx} is out of bounds for available masks ({all_topk_indices.shape[0]}).")
+            return
+
+        selected_views_for_target_mask = all_topk_indices[target_mask_idx]
+        
+        print(f"Top {topk} view indices (in projector's list) for mask {target_mask_idx}: {selected_views_for_target_mask}")
+        
+        original_image_indices_for_topk_views = [self.images.indices[view_idx_in_projector] for view_idx_in_projector in selected_views_for_target_mask]
+        print(f"Corresponding original image file indices: {original_image_indices_for_topk_views}")
+
+        # self.images.images is a list of PIL.Image objects
+        # self.images.get_as_np_list() can be used if needed, but SAM takes np array
+        
+        # Pre-load numpy versions of images if not already done by get_as_np_list or if it's not stored
+        # For safety, let's get them if SAM needs them directly.
+        # The Images class already loads them as PIL images in self.images.
+        # We can convert PIL to numpy for SAM.
+
+        for i, view_idx_in_projector in enumerate(selected_views_for_target_mask):
+            original_image_file_idx = self.images.indices[view_idx_in_projector]
+            current_image_pil = self.images.images[view_idx_in_projector] # This is a PIL.Image
+            current_image_np = np.array(current_image_pil) # Convert PIL to NumPy for SAM
+
+            print(f"\n--- Processing View {i+1}/{topk} for Mask {target_mask_idx} ---")
+            print(f"Projector View Index: {view_idx_in_projector}, Original Image File Index: {original_image_file_idx}")
+            
+            # Call the new occlusion debug method for this mask and view
+            # Pass self.images so it can access the color image for visualization
+            # self.point_projector.debug_occlusion_for_mask_in_view(
+            #     target_mask_idx=target_mask_idx,
+            #     view_idx_in_projector_list=view_idx_in_projector,
+            #     images_obj=self.images, 
+            #     num_points_to_debug=3 # You can change how many points to inspect
+            # )
+
+            plt.figure(figsize=(10, 7))
+            plt.imshow(current_image_pil)
+            plt.title(f"Mask {target_mask_idx} - View {i+1} (Orig File Idx: {original_image_file_idx}) - Full Image")
+            plt.axis('off')
+            plt.show()
+
+            visible_mask_in_view_2d = self.point_projector.visible_points_in_view_in_mask[view_idx_in_projector, target_mask_idx]
+            point_coords_2d_yx = np.transpose(np.where(visible_mask_in_view_2d == True)) # (row, col) i.e. (y,x)
+
+            num_visible_points_in_mask_view = point_coords_2d_yx.shape[0]
+            print(f"Number of visible points for mask {target_mask_idx} in this view: {num_visible_points_in_mask_view}")
+
+            if num_visible_points_in_mask_view > 0:
+                plt.figure(figsize=(10, 7))
+                plt.imshow(current_image_pil)
+                if point_coords_2d_yx.size > 0:
+                    plt.scatter(point_coords_2d_yx[:, 1], point_coords_2d_yx[:, 0], s=10, c='red', marker='.') # Scatter takes (x,y)
+                plt.title(f"Mask {target_mask_idx} - View {i+1} - Projected 3D Mask Points (Red)")
+                plt.axis('off')
+                plt.show()
+
+                self.predictor_sam.set_image(current_image_np) # SAM expects H, W, C numpy array
+                
+                # run_sam expects point_coords as (N,2) with (y,x)
+                best_sam_mask = run_sam(image_size=current_image_np.shape[:2], # (H,W)
+                                        num_random_rounds=num_random_rounds,
+                                        num_selected_points=num_selected_points,
+                                        point_coords=point_coords_2d_yx, 
+                                        predictor_sam=self.predictor_sam)
+
+                plt.figure(figsize=(10, 7))
+                plt.imshow(current_image_pil)
+                plt.imshow(best_sam_mask, alpha=0.6, cmap='viridis')
+                plt.title(f"Mask {target_mask_idx} - View {i+1} - SAM Mask Overlay")
+                plt.axis('off')
+                plt.show()
+
+                print("Multi-level crops from SAM mask:")
+                fig_crops, axes_crops = plt.subplots(1, num_levels, figsize=(num_levels * 4, 4))
+                if num_levels == 1: axes_crops = [axes_crops] # Make it iterable
+
+                for level in range(num_levels):
+                    x1, y1, x2, y2 = mask2box_multi_level(torch.from_numpy(best_sam_mask), level, multi_level_expansion_ratio)
+                    
+                    img_width, img_height = current_image_pil.size
+                    x1_c = max(0, int(x1))
+                    y1_c = max(0, int(y1))
+                    x2_c = min(img_width, int(x2))
+                    y2_c = min(img_height, int(y2))
+
+                    if x1_c < x2_c and y1_c < y2_c:
+                        cropped_img_pil = current_image_pil.crop((x1_c, y1_c, x2_c, y2_c))
+                        axes_crops[level].imshow(cropped_img_pil)
+                        axes_crops[level].set_title(f"L{level}\nBox:({x1_c},{y1_c})-({x2_c},{y2_c})")
+                        axes_crops[level].axis('off')
+                    else:
+                        print(f"  Level {level}: Invalid crop box ({x1_c},{y1_c})-({x2_c},{y2_c}). Original: ({x1},{y1})-({x2},{y2})")
+                        axes_crops[level].text(0.5, 0.5, 'Invalid Crop', ha='center', va='center')
+                        axes_crops[level].axis('off')
+                plt.suptitle(f"Mask {target_mask_idx} - View {i+1} - Crops", fontsize=14)
+                plt.tight_layout(rect=[0, 0, 1, 0.96])
+                plt.show()
+            else:
+                print(f"Skipping SAM and cropping for view (orig file idx {original_image_file_idx}) as no points of mask {target_mask_idx} are visible.")

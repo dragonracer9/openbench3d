@@ -30,7 +30,7 @@ class ScannetPreprocessing(BasePreprocessing):
         self.scannet200 = scannet200
 
         if self.scannet200:
-            self.labels_pd = pd.read_csv("/mnt/c/users/vikra/desktop/ethz/msc_mech_eng/3dv/openbench3d/scannetv2-labels.combined.tsv", sep='\t', header=0)
+            self.labels_pd = pd.read_csv("/home/ninol/openbench3d/scannetv2-labels.combined.tsv", sep='\t', header=0)
 
         git_repo = Path(git_repo)
         self.create_label_database(git_repo)
@@ -70,7 +70,7 @@ class ScannetPreprocessing(BasePreprocessing):
         else:
             if (self.save_dir / "label_database.yaml").exists():
                 return self._load_yaml(self.save_dir / "label_database.yaml")
-            df = pd.read_csv("/local/home/efedele/clean/Mask3D/datasets/preprocessing/scannetv2-labels.combined.tsv", sep="\t")
+            df = pd.read_csv("/home/ninol/openbench3d/scannetv2-labels.combined.tsv", sep="\t")
             df = (
                 df[~df[["nyu40class", "nyu40id"]].duplicated()][["nyu40class", "nyu40id"]]
                     .set_index("nyu40id")

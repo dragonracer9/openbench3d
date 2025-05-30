@@ -182,5 +182,15 @@ if __name__ == '__main__':
     opt = parser.parse_args()
 
     # ScanNet200, "a {} in a scene", all masks are assigned 1.0 as the confidence score
-    test_pipeline_full_scannet200(opt.mask_features_dir, opt.gt_dir, opt.mask_pred_dir, opt.sentence_structure, opt.feature_file_template, dataset_type='scannet200', clip_model_type='ViT-L/14@336px', keep_first=None, scene_list_file=opt.scene_list_file, masks_template=opt.masks_template)
+    test_pipeline_full_scannet200(opt.mask_features_dir, 
+                                  opt.gt_dir, 
+                                  opt.mask_pred_dir,
+                                  opt.sentence_structure,
+                                  opt.feature_file_template,
+                                  dataset_type='scannet200',
+                                  clip_model_type='ViT-L/14@336px',
+                                  keep_first=None,
+                                  scene_list_file=opt.scene_list_file,
+                                  masks_template=opt.masks_template)
+
        
