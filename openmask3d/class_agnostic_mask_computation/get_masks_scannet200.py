@@ -29,6 +29,8 @@ def get_parameters(cfg: DictConfig):
         cfg, model = load_backbone_checkpoint_with_missing_or_exsessive_keys(cfg, model)
     if cfg.general.checkpoint is not None:
         cfg, model = load_checkpoint_with_missing_or_exsessive_keys(cfg, model)
+    
+    print("Checkpoint loaded")
 
     #logger.info(flatten_dict(OmegaConf.to_container(cfg, resolve=True)))
     return cfg, model, None #loggers
@@ -38,22 +40,34 @@ def get_parameters(cfg: DictConfig):
 def get_class_agnostic_masks_scannet200(cfg: DictConfig):
    
     os.chdir(hydra.utils.get_original_cwd())
+    print("Current working directory:", os.getcwd())
     cfg, model, _ = get_parameters(cfg)
+    print(cfg)
     test_dataset = hydra.utils.instantiate(cfg.data.test_dataset)
     c_fn = hydra.utils.instantiate(cfg.data.test_collation)
-
-    test_dataloader = hydra.utils.instantiate(
+    if cfg.data.test_dataloader is not None:
+        test_dataloader = hydra.utils.instantiate(
             cfg.data.test_dataloader,
             test_dataset,
             collate_fn=c_fn,
         )
+    else:
+        # If no test_dataloader is provided, use the default one
+        print("No test_dataloader provided, aborting")
+        os._exit(os.EX_USAGE)
+        return
+    # 
     model.freeze()
-    #print(list(test_dataloader))
+    # print(list(test_dataloader))
+    print("Test dataloader loaded")
+    # os.chdir(hydra.utils.get_original_cwd())
     runner = Trainer(
         gpus=cfg.general.gpus,
         logger=None,
         **cfg.trainer
     )
+    print("Trainer loaded")
+    print("Running test")
     runner.test(model)
 
 

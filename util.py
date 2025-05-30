@@ -9,7 +9,7 @@ import re
 
 
 ### Reorganise filepath
-def reorganise_image_path(path2d: os.PathLike, path3d: os.PathLike, filetype: str):
+def reorganise_image_path(path2d: os.PathLike, path3d: os.PathLike, filetype: str = 'ply'):
     '''
     Reorganises dataset to folder structure required by the load utility function of OM3D
     
@@ -27,29 +27,29 @@ def reorganise_image_path(path2d: os.PathLike, path3d: os.PathLike, filetype: st
         print(same_length)
                 
     with os.scandir(path3d ) as it:
-        pth_filenames = np.array([entry.name for entry in it if not entry.name.startswith('.') and entry.is_file() and entry.name.endswith(filetype) ])
+        ply_filenames = np.array([entry.name for entry in it if not entry.name.startswith('.') and entry.is_file() and entry.name.endswith(filetype) ])
         
-    # debug_lengths = (np.array([len(x) for x in pth_filenames]) == len('scene0000_00_vh_clean_2.pth')).all()
-    prefixes = np.array([x.replace('_vh_clean_2.pth', '') for x in pth_filenames])
+    # debug_lengths = (np.array([len(x) for x in ply_filenames]) == len('scene0000_00_vh_clean_2.pth')).all()
+    prefixes = np.array([x.replace('_vh_clean_2.ply', '') for x in ply_filenames])
     print(prefixes.shape==subdirectories2d.shape)
     print(prefixes.dtype==subdirectories2d.dtype)
     
     dir_idxs = np.array([np.where(subdirectories2d==x)[0] for x in prefixes])
      
     for i,j in enumerate(dir_idxs):
-        print(f"Copying scannet3d/[train/val]/{pth_filenames[i]} to scannet2d/{subdirectories2d[j]}")
-        source = os.path.join(path3d + '/' + pth_filenames[i])
-        out = os.path.join(path2d, prefixes[i] + '/' + pth_filenames[i])
+        print(f"Copying scannet3d/[train/val]/{ply_filenames[i]} to scannet2d/{subdirectories2d[j]}")
+        source = os.path.join(path3d + '/' + ply_filenames[i])
+        out = os.path.join(path2d, prefixes[i] + '/' + ply_filenames[i])
         
         if not os.path.isfile(out):
             shutil.copy2(source, out)
             print(f"source: {source}, out: {out}")
         else:
-            print("No need to copy the pointcloud, the .pth file exists alr")
+            print(f"No need to copy the pointcloud, the .{filetype} file exists alr")
     
         data_dir        = os.path.join(path2d, prefixes[i] + '/' + 'data')
-        pose_dir        = os.path.join(path2d, prefixes[i] + '/' + 'data' + '/' + 'pose')
-        intrinsics_dir  = os.path.join(path2d, prefixes[i] + '/' + 'data' + '/' + 'intrinsics')
+        pose_dir        = os.path.join(path2d, prefixes[i] + '/' + 'data' + '/' + 'pose') # + 'data' + '/'
+        intrinsics_dir  = os.path.join(path2d, prefixes[i] + '/' + 'data' + '/' + 'intrinsic') # + 'data' + '/'
         compressed_dir  = os.path.join(path2d, prefixes[i] + '/' + 'data_compressed')
         color_dir       = os.path.join(path2d, prefixes[i] + '/' + 'data_compressed' + '/' + 'color')
         depth_dir       = os.path.join(path2d, prefixes[i] + '/' + 'data_compressed' + '/' + 'depth')
@@ -57,22 +57,27 @@ def reorganise_image_path(path2d: os.PathLike, path3d: os.PathLike, filetype: st
         intrinsics_file  = os.path.join(path2d, 'intrinsics.txt') ## kinda const, but imma group it with the other paths
         
         # handle directory creation
-        if not (os.path.isdir(data_dir) and os.path.isdir(compressed_dir)):
-            os.makedirs(data_dir)
-            os.makedirs(compressed_dir)
+        # if (os.path.isdir(data_dir) and os.path.isdir(compressed_dir)):
+        #     print(f"Deleting {data_dir} and {compressed_dir}")
+        #     os.rmdir(data_dir)
+        #     os.rmdir(compressed_dir)
         
-        if not (os.path.isdir(intrinsics_dir) and os.path.isdir(pose_dir)):
-            os.makedirs(intrinsics_dir)
-            os.makedirs(pose_dir)
-                
-        if not (os.path.isdir(color_dir) and os.path.isdir(depth_dir)):
+        if not os.path.isdir(color_dir):
             os.makedirs(color_dir)
+            
+        if not os.path.isdir(depth_dir):
             os.makedirs(depth_dir)
+            
+        if not os.path.isdir(pose_dir):
+            os.makedirs(pose_dir)
         
-        color = os.path.join(path2d, prefixes[i] + '/' + 'color')
-        depth = os.path.join(path2d, prefixes[i] + '/' + 'depth')
-        pose = os.path.join(path2d, prefixes[i] + '/' + 'pose')
-        label = os.path.join(path2d, prefixes[i] + '/' + 'label')
+        if not os.path.isdir(intrinsics_dir):    
+            os.makedirs(intrinsics_dir)
+        
+        color   = os.path.join(path2d, prefixes[i] + '/' + 'color')
+        depth   = os.path.join(path2d, prefixes[i] + '/' + 'depth')
+        pose    = os.path.join(path2d, prefixes[i] + '/' + 'pose')
+        # label   = os.path.join(path2d, prefixes[i] + '/' + 'label')
         
         print(f"{color} > {color_dir}")
         print(f"{depth} > {depth_dir}")
@@ -128,7 +133,7 @@ def copy_files(src: os.PathLike, dst: os.PathLike, postfix: str = '_vh_clean_2.p
     with os.scandir(src) as it:
         filenames = np.array([entry.name for entry in it if not entry.name.startswith('.') and entry.is_file()])
         
-    # debug_lengths = (np.array([len(x) for x in pth_filenames]) == len('scene0000_00_vh_clean_2.pth')).all()
+    # debug_lengths = (np.array([len(x) for x in ply_filenames]) == len('scene0000_00_vh_clean_2.pth')).all()
     prefixes = np.array([x.replace(postfix, '') for x in filenames])
     print(prefixes.shape==subdirectories.shape)
     print(prefixes.dtype==subdirectories.dtype)
@@ -148,17 +153,31 @@ def copy_files(src: os.PathLike, dst: os.PathLike, postfix: str = '_vh_clean_2.p
     
     return
 
+def rename_intrinsics(path: os.PathLike):
+
+
+    with os.scandir(path) as it:
+        subdirectories = np.array([entry.name for entry in it if not entry.name.startswith('.') and entry.is_dir()]).flatten()
+        # same_length = (np.array([len(x) for x in subdirectories]) == 12).all()
+        # print(same_length)
+        for directory in subdirectories:
+            print(f"Directory: {directory}")
+            FILE = os.path.join(path, directory + '/' + 'data' + '/' + 'intrinsic' + '/' + 'intrinsics.txt')
+            os.rename(FILE, os.path.join(path, directory + '/' + 'data' + '/' + 'intrinsic' + '/' + 'intrinsic_color.txt'))
+           
+    return
+
 
 def pth_to_ply(path3d: os.PathLike): # try to undo data-preprocessing done by openscene on the 3d files from scannet
     with os.scandir(path3d ) as it:
-        pth_filenames = np.array([entry.name for entry in it if not entry.name.startswith('.') and entry.is_file()])
-    ply_filenames = np.array([x.replace('_vh_clean_2.pth', '_vh_clean_2.ply') for x in pth_filenames])
+        ply_filenames = np.array([entry.name for entry in it if not entry.name.startswith('.') and entry.is_file()])
+    ply_filenames = np.array([x.replace('_vh_clean_2.pth', '_vh_clean_2.ply') for x in ply_filenames])
     print(ply_filenames)
     
     out_dir = path3d + '/' + "ply"
     os.makedirs(out_dir)
     
-    for i, file in enumerate(pth_filenames):
+    for i, file in enumerate(ply_filenames):
         source = os.path.join(path3d + '/' + file)
         # print(f"loading pth {source}")
         data = torch.load(source)
@@ -278,12 +297,15 @@ b) the correct folder structure
 c) add metadata files to the dataset used for preprocessing
 '''
 
+# rename_intrinsics("path")
+
+# reorganise_image_path("scans", "ply file path")
+
 # copy_files("ABSOLUTE PATH TO DATA", "ABSOLUTE PATH TO DATASET")
 
 # verify_number_of_files("ABSOLUTE PATH TO DATASET (.../datasets/data)", 9, breakpt=0, verbose=True)
 
-# add_metadata("ABSOLUTE PATH TO METADATA FILES (eg., .../datasets/metadata)", "ABSOLUTE PATH TO DATASET (.../datasets/data/scans)")
+# add_metadata("ABSOLUTE PATH TO METADATA", "ABSOLUTE PATH TO DATASET")
 
 # pth_to_ply("ABSOLUTE PATH TO DATASET 3D (.../datasets/data/scannet_3d)")
 
-# reorganise_image_path("ABSOLUTE PATH TO DATASET 2D (.../datasets/data/scannet_2d)", "ABSOLUTE PATH TO DATASET 3D (.../datasets/data/scannet_3d)")

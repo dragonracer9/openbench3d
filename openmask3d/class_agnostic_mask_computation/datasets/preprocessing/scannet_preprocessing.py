@@ -51,10 +51,6 @@ class ScannetPreprocessing(BasePreprocessing):
                 )
             self.files[mode] = natsorted(filepaths)
             print(f"length of filebase {len(filepaths)}")
-            
-        # coords, features, _ = load_ply_with_normals("/mnt/c/users/vikra/desktop/ethz/msc_mech_eng/3dv/openbench3d/datasets/data/scannet_3d/scene0000_00_vh_clean_2.pth")
-        # print(coords)
-        # print(features)
 
     def create_label_database(self, git_repo):
         if self.scannet200:
