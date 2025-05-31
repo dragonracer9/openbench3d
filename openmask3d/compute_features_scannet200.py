@@ -7,6 +7,7 @@ from openmask3d.mask_features_computation.features_extractor import FeaturesExtr
 from openmask3d.mask_features_computation.features_extractor_siglip import FeaturesExtractorSiglip
 import torch
 import os
+import time
 from glob import glob
 
 # TIP: add version_base=None to the arguments if you encounter some error  
@@ -20,16 +21,25 @@ def main(ctx: DictConfig):
     if not os.path.exists(out_folder):
         os.makedirs(out_folder)
     print(f"[INFO] Saving feature results to {out_folder}")
+
+    # Check already computed features
+    existing_features = glob(os.path.join(out_folder, 'scene*_openmask3d_features.npy'))
+    # If features already exist, skip computation for those scenes
+    existing_scenes = [os.path.basename(f).replace('_openmask3d_features.npy', '').replace('scene', '') for f in existing_features]
+    print(f"[INFO] Existing features for scenes: {existing_scenes}")
     
     # Selected subset of masks to evaluate
-    selected_masks = ['0671_01', '0300_01', '0231_00', '0063_00', '0553_01', '0095_01', '0655_00', '0329_02', '0549_00', '0217_00', '0334_02', '0702_00', '0355_01', '0164_03', '0606_00', '0474_05', '0389_00', '0684_01', '0670_01', '0256_00', '0100_01', '0084_02', '0580_00', '0488_00', '0050_02', '0426_00', '0651_02', '0663_00', '0559_01', '0353_00', '0684_00', '0583_01', '0552_01', '0357_01', '0599_01', '0334_00', '0139_00', '0575_01', '0277_02', '0629_02', '0353_02', '0607_00', '0432_00', '0458_01', '0406_02', '0030_02', '0088_01', '0559_00', '0435_03', '0643_00']
-    
+    # selected_masks = ['0671_01', '0300_01', '0231_00', '0063_00', '0553_01', '0095_01', '0655_00', '0329_02', '0549_00', '0217_00', '0334_02', '0702_00', '0355_01', '0164_03', '0606_00', '0474_05', '0389_00', '0684_01', '0670_01', '0256_00', '0100_01', '0084_02', '0580_00', '0488_00', '0050_02', '0426_00', '0651_02', '0663_00', '0559_01', '0353_00', '0684_00', '0583_01', '0552_01', '0357_01', '0599_01', '0334_00', '0139_00', '0575_01', '0277_02', '0629_02', '0353_02', '0607_00', '0432_00', '0458_01', '0406_02', '0030_02', '0088_01', '0559_00', '0435_03', '0643_00']
+    selected_masks = ['0011_00']
     all_masks_paths = sorted(glob(os.path.join(ctx.data.masks.masks_path, ctx.data.masks.masks_suffix)))
     
     # Filter masks_paths to only include selected scenes
     masks_paths = []
     for mask_path in all_masks_paths:
         scene_id = mask_path.split('/')[-1].replace('scene', '').replace('_masks.pt', '')
+        if scene_id in existing_scenes:
+            print(f"[INFO] Skipping already computed scene {scene_id} from {mask_path}")
+            continue
         if scene_id in selected_masks:
             masks_paths.append(mask_path)
     
@@ -37,9 +47,11 @@ def main(ctx: DictConfig):
     print(masks_paths)
     
     for masks_path in masks_paths:
+        # Start timing for this scene
+        scene_start_time = time.time()
 
         print(f"[INFO] Processing masks from {masks_path}")
-        
+
         scene_num_str = masks_path.split('/')[-1][5:12]
         path = os.path.join(ctx.data.scans_path, 'scene'+ scene_num_str)
         poses_path = os.path.join(path,ctx.data.camera.poses_path)
@@ -106,7 +118,12 @@ def main(ctx: DictConfig):
         filename = f"scene{scene_num_str}_openmask3d_features.npy"
         output_path = os.path.join(out_folder, filename)
         np.save(output_path, features)
+        
+        # Calculate and print scene processing time
+        scene_end_time = time.time()
+        scene_total_time = scene_end_time - scene_start_time
         print(f"[INFO] Mask features for scene {scene_num_str} saved to {output_path}.")
+        print(f"[TIMING] Scene {scene_num_str} completed in {scene_total_time:.1f}s ({scene_total_time/60:.1f} minutes)")
 
 
         # # 7. Debugging
