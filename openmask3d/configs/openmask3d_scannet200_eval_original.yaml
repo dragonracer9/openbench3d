@@ -5,9 +5,8 @@ data:
     masks_suffix: '*_masks.pt'
   camera:
     poses_path: 'data/pose/'
-    intrinsic_path: 'intrinsic/intrinsic_color.txt'
-    # intrinsic_resolution: [968, 1296] 
-    intrinsic_resolution: [240, 320] 
+    intrinsic_path: 'data/intrinsic/intrinsic_color.txt'
+    intrinsic_resolution: [240, 320]
   depths:
     depths_path: 'data_compressed/depth/'
     depths_ext: '.png'
@@ -26,13 +25,9 @@ openmask3d:
   num_selected_points: 5
 
 external:
-  feature_extractor_type: 'siglip'  # Options: 'clip', 'siglip'
   sam_checkpoint: '/cluster/scratch/efedele/checkpoints/sam_vit_h_4b8939.pth'
   sam_model_type: 'vit_h'
   clip_model: 'ViT-L/14@336px'
-  # siglip_model: 'google/siglip-base-patch16-224'
-  # siglip_model: 'google/siglip-so400m-patch14-384'
-  siglip_model: 'google/siglip-base-patch16-384'
 
 output:
   experiment_name: 'experiment'
