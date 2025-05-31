@@ -141,8 +141,8 @@ class FeaturesExtractorSiglip:
             dummy_feat = self.model.get_image_features(px)
         
         self.feature_dim = dummy_feat.shape[-1]
-        print(f"[INFO] SigLIP feature dimension: {self.feature_dim}")
-        print(f"[INFO] SigLIP model and processor initialized successfully")
+        # print(f"[INFO] SigLIP feature dimension: {self.feature_dim}")
+        # print(f"[INFO] SigLIP model and processor initialized successfully")
         # BICUBIC = InterpolationMode.BICUBIC
         # self.transform = Compose([
         #                             Resize(w, interpolation=BICUBIC),
@@ -219,76 +219,76 @@ class FeaturesExtractorSiglip:
                         # print("Processed crop size:", px.size())
                         
                         # images_crops.append(px)
-                        print(f"[INFO] Crop {level} for mask {mask} in view {view} is of size: {cropped_img.size}")
-                        print(f"[INFO] First few pixels: {np.array(cropped_img).flatten()[:10]}")
-            print(f"[INFO] I'm here")
+                        # print(f"[INFO] Crop {level} for mask {mask} in view {view} is of size: {cropped_img.size}")
+                        # print(f"[INFO] First few pixels: {np.array(cropped_img).flatten()[:10]}")
+            # print(f"[INFO] I'm here")
             if(optimize_gpu_usage):
                 self.predictor_sam.model.cpu()
                 self.model.to(torch.device('cuda'))                
             if(len(images_crops) > 0):
-                print(f"[INFO] Number of crops for mask {mask} is {len(images_crops)}")
+                # print(f"[INFO] Number of crops for mask {mask} is {len(images_crops)}")
                 # CRITICAL: Use padding="max_length" as proven in our test
                 inputs = self.processor(images=images_crops, padding="max_length", return_tensors="pt")
-                print(f"[INFO] Image input keys: {inputs.keys()}")
-                if "pixel_values" in inputs:
-                    print(f"[INFO] Pixel values shape: {inputs['pixel_values'].shape}")
+                # print(f"[INFO] Image input keys: {inputs.keys()}")
+                # if "pixel_values" in inputs:
+                #     print(f"[INFO] Pixel values shape: {inputs['pixel_values'].shape}")
                 
                 with torch.no_grad():
                     # Extract image features using the same approach as our successful test
                     image_features = self.model.get_image_features(inputs["pixel_values"].to(self.device))
-                    print(f"[INFO] Image features shape: {image_features.shape}, dtype: {image_features.dtype}")
-                    print(f"[INFO] Raw image features range: {image_features.min():.3f} - {image_features.max():.3f}")
+                    # print(f"[INFO] Image features shape: {image_features.shape}, dtype: {image_features.dtype}")
+                    # print(f"[INFO] Raw image features range: {image_features.min():.3f} - {image_features.max():.3f}")
                     
                     # Normalize features (critical for cosine similarity)
                     image_features = image_features / image_features.norm(dim=-1, keepdim=True)
-                    print(f"[INFO] Normalized features range: {image_features.min():.3f} - {image_features.max():.3f}")
-                    print(f"[INFO] Feature norms: {image_features.norm(dim=-1)}")
+                    # print(f"[INFO] Normalized features range: {image_features.min():.3f} - {image_features.max():.3f}")
+                    # print(f"[INFO] Feature norms: {image_features.norm(dim=-1)}")
                     
                     # Debug: Check if crops are actually different
-                    if image_features.shape[0] > 1:
-                        # Compute pairwise similarities between crops
-                        crop_similarities = torch.mm(image_features, image_features.T)
-                        print(f"[INFO] Crop similarities for mask {mask}: min={crop_similarities.min():.3f}, max={crop_similarities.max():.3f}, mean={crop_similarities.mean():.3f}")
-                        # Show off-diagonal similarities (excluding self-similarity)
-                        off_diag = crop_similarities[torch.triu(torch.ones_like(crop_similarities), diagonal=1) == 1]
-                        if len(off_diag) > 0:
-                            print(f"[INFO] Off-diagonal similarities: {off_diag[:5].tolist()}")
+                    # if image_features.shape[0] > 1:
+                    #     # Compute pairwise similarities between crops
+                    #     crop_similarities = torch.mm(image_features, image_features.T)
+                    #     # print(f"[INFO] Crop similarities for mask {mask}: min={crop_similarities.min():.3f}, max={crop_similarities.max():.3f}, mean={crop_similarities.mean():.3f}")
+                    #     # Show off-diagonal similarities (excluding self-similarity)
+                    #     off_diag = crop_similarities[torch.triu(torch.ones_like(crop_similarities), diagonal=1) == 1]
+                    #     if len(off_diag) > 0:
+                    #         print(f"[INFO] Off-diagonal similarities: {off_diag[:5].tolist()}")
                     
                     # Average the normalized features (this preserves the normalization)
                     mean_feat = image_features.mean(axis=0)
                     # Re-normalize after averaging (important!)
                     mean_feat = mean_feat / mean_feat.norm()
                     
-                print(f"[INFO] Final mean feature for mask {mask} shape: {mean_feat.shape}, norm: {mean_feat.norm():.3f}")
-                print(f"[INFO] Mean feature range: {mean_feat.min():.3f} - {mean_feat.max():.3f}")
+                # print(f"[INFO] Final mean feature for mask {mask} shape: {mean_feat.shape}, norm: {mean_feat.norm():.3f}")
+                # print(f"[INFO] Mean feature range: {mean_feat.min():.3f} - {mean_feat.max():.3f}")
                 mask_siglip[mask] = mean_feat.cpu().numpy()
-                print(f"[INFO] Mask features are of shape: {mask_siglip.shape} and with values in range {mask_siglip.min()} - {mask_siglip.max()}")
-                print(f"[INFO] Sample values for mask {mask}: {mask_siglip[mask][:10]}")
+                # print(f"[INFO] Mask features are of shape: {mask_siglip.shape} and with values in range {mask_siglip.min()} - {mask_siglip.max()}")
+                # print(f"[INFO] Sample values for mask {mask}: {mask_siglip[mask][:10]}")
                 
                 # Debug: Check similarity with previous masks
-                if mask > 0:
-                    prev_mask_idx = mask - 1
-                    while prev_mask_idx >= 0 and np.linalg.norm(mask_siglip[prev_mask_idx]) == 0:
-                        prev_mask_idx -= 1
-                    if prev_mask_idx >= 0:
-                        similarity = np.dot(mask_siglip[mask], mask_siglip[prev_mask_idx])
-                        print(f"[INFO] Similarity between mask {mask} and mask {prev_mask_idx}: {similarity:.4f}")
+                # if mask > 0:
+                #     prev_mask_idx = mask - 1
+                #     while prev_mask_idx >= 0 and np.linalg.norm(mask_siglip[prev_mask_idx]) == 0:
+                #         prev_mask_idx -= 1
+                #     if prev_mask_idx >= 0:
+                #         similarity = np.dot(mask_siglip[mask], mask_siglip[prev_mask_idx])
+                #         print(f"[INFO] Similarity between mask {mask} and mask {prev_mask_idx}: {similarity:.4f}")
                         
         # Final analysis
-        print(f"\n[INFO] === FINAL FEATURE ANALYSIS ===")
-        non_zero_masks = [i for i in range(num_masks) if np.linalg.norm(mask_siglip[i]) > 0]
-        print(f"[INFO] Non-zero masks: {len(non_zero_masks)}/{num_masks}")
+        # print(f"\n[INFO] === FINAL FEATURE ANALYSIS ===")
+        # non_zero_masks = [i for i in range(num_masks) if np.linalg.norm(mask_siglip[i]) > 0]
+        # print(f"[INFO] Non-zero masks: {len(non_zero_masks)}/{num_masks}")
         
-        if len(non_zero_masks) > 1:
-            # Compute pairwise similarities between all mask features
-            similarities = []
-            for i in range(len(non_zero_masks)):
-                for j in range(i+1, len(non_zero_masks)):
-                    sim = np.dot(mask_siglip[non_zero_masks[i]], mask_siglip[non_zero_masks[j]])
-                    similarities.append(sim)
-            similarities = np.array(similarities)
-            print(f"[INFO] Mask-to-mask similarities: min={similarities.min():.4f}, max={similarities.max():.4f}, mean={similarities.mean():.4f}")
-            print(f"[INFO] Sample similarities: {similarities[:10].tolist()}")
+        # if len(non_zero_masks) > 1:
+        #     # Compute pairwise similarities between all mask features
+        #     similarities = []
+        #     for i in range(len(non_zero_masks)):
+        #         for j in range(i+1, len(non_zero_masks)):
+        #             sim = np.dot(mask_siglip[non_zero_masks[i]], mask_siglip[non_zero_masks[j]])
+        #             similarities.append(sim)
+        #     similarities = np.array(similarities)
+        #     print(f"[INFO] Mask-to-mask similarities: min={similarities.min():.4f}, max={similarities.max():.4f}, mean={similarities.mean():.4f}")
+        #     print(f"[INFO] Sample similarities: {similarities[:10].tolist()}")
                     
         return mask_siglip
 

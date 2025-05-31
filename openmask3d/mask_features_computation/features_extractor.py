@@ -1,5 +1,11 @@
 
 import clip
+# import lama_cleaner.model
+# import lama_cleaner.model.lama
+import iopaint.model
+import iopaint.model_manager
+import iopaint.schema
+from iopaint.schema import InpaintRequest
 import numpy as np
 import imageio
 import torch
@@ -7,6 +13,10 @@ from tqdm import tqdm
 import os
 from openmask3d.data.load import Camera, InstanceMasks3D, Images, PointCloud, get_number_of_images
 from openmask3d.mask_features_computation.utils import initialize_sam_model, mask2box_multi_level, run_sam
+# import lama_cleaner
+# from lama_cleaner import LaMa
+import iopaint
+from simple_lama_inpainting import SimpleLama
 
 class PointProjector:
     def __init__(self, camera: Camera, 
@@ -259,6 +269,8 @@ class FeaturesExtractor:
         self.point_projector = PointProjector(camera, pointcloud, masks, vis_threshold, images.indices)
         self.predictor_sam = initialize_sam_model(device, sam_model_type, sam_checkpoint)
         self.clip_model, self.clip_preprocess = clip.load(clip_model, device)
+        self.inpainting_model = SimpleLama()
+        # iopaint.model.LaMa(device=device)
         
     
     def extract_features(self, topk, multi_level_expansion_ratio, num_levels, num_random_rounds, num_selected_points, save_crops, out_folder, optimize_gpu_usage=False):
@@ -293,11 +305,68 @@ class FeaturesExtractor:
                                         point_coords=point_coords,
                                         predictor_sam=self.predictor_sam,)
                     
+                    mask = np.logical_and(
+                        self.point_projector.visible_points_in_view_in_mask[view][mask],
+                        np.logical_not(self.point_projector.visible_points_view[view][mask])
+                    )
+
+                    # Save all three masks for inspection
+                    mask_dir = os.path.join(out_folder, f"masks_{mask}_{view}")
+                    os.makedirs(mask_dir, exist_ok=True)
+                    imageio.imwrite(os.path.join(mask_dir, "visible_points_in_view_in_mask.png"),
+                                    self.point_projector.visible_points_in_view_in_mask[view][mask].astype(np.uint8) * 255)
+                    imageio.imwrite(os.path.join(mask_dir, "visible_points_view.png"),
+                                    self.point_projector.visible_points_view[view][mask].astype(np.uint8) * 255)
+                    imageio.imwrite(os.path.join(mask_dir, "best_mask.png"),
+                                    best_mask.astype(np.uint8) * 255)
+                    imageio.imwrite(os.path.join(mask_dir, "final_mask.png"),
+                                    mask.astype(np.uint8) * 255)
+                    image_height, image_width = np_images[view].shape[:2]
+
+                    # Save the original image next to the inpainted mask image
+                    orig_img_path = os.path.join(out_folder, f"orig{mask}_{view}.png")
+                    imageio.imwrite(orig_img_path, np_images[view])
+
+                 
+                    mask_size = min(image_height, image_width) // 4  # Size of the square (adjust as needed)
+                    center_y, center_x = image_height // 2, image_width // 2
+                    half_size = mask_size // 2
+
+                    inpaintin_mask = np.zeros((image_height, image_width), dtype=np.uint8)
+                    y1 = max(center_y - half_size, 0)
+                    y2 = min(center_y + half_size, image_height)
+                    x1 = max(center_x - half_size, 0)
+                    x2 = min(center_x + half_size, image_width)
+                    inpaintin_mask[y1:y2, x1:x2] = 1
+
+                    # Save the mask used for inpainting
+                    mask_path = os.path.join(out_folder, f"mask{mask}_{view}_mask.png")
+                    imageio.imwrite(mask_path, inpaintin_mask * 255)
+
+                    # Create InpaintRequest config for LaMa model
+                    # config = iopaint.schema.InpaintRequest()
+                    result = self.inpainting_model(np_images[view], inpaintin_mask)
+                    # result = self.inpainting_model(np_images[view], inpaintin_mask, config)
+                    
+                    # Convert result to proper format for saving
+                    if isinstance(result, np.ndarray):
+                        # Convert from float to uint8 if needed
+                        if result.dtype == np.float64 or result.dtype == np.float32:
+                            result = (result * 255).astype(np.uint8)
+                        result_to_save = result
+                    else:
+                        # If it's a PIL Image, convert to numpy array
+                        result_to_save = np.array(result)
+                    
+                    print(f"Mask {mask} for view {view} processed. Result shape: {result_to_save.shape}, dtype: {result_to_save.dtype}")
+                    # Save result
+                    imageio.imwrite(os.path.join(out_folder, f"mask{mask}_{view}.png"), result_to_save)
+                    
                     # MULTI LEVEL CROPS
                     for level in range(num_levels):
                         # get the bbox and corresponding crops
-                        x1, y1, x2, y2 = mask2box_multi_level(torch.from_numpy(best_mask), level, multi_level_expansion_ratio)
-                        
+                        x1, y1, x2, y2 = mask2box_multi_level(torch.from_numpy(best_mask), level, multi_level_expansion_ratio)    
+
                         print("Uncropped size:", self.images.images[view].size)
 
                         cropped_img = self.images.images[view].crop((x1, y1, x2, y2))
@@ -333,6 +402,7 @@ class FeaturesExtractor:
                             display_point_cloud=True):
         import matplotlib.pyplot as plt
         import open3d as o3d
+
         from PIL import ImageDraw # For drawing on images
         import numpy as np # Ensure numpy is imported
         import torch # Ensure torch is imported

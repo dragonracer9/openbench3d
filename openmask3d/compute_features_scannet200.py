@@ -20,9 +20,23 @@ def main(ctx: DictConfig):
     if not os.path.exists(out_folder):
         os.makedirs(out_folder)
     print(f"[INFO] Saving feature results to {out_folder}")
-    masks_paths = sorted(glob(os.path.join(ctx.data.masks.masks_path, ctx.data.masks.masks_suffix)))
     
-    for masks_path in masks_paths[0:2]:
+    # Selected subset of masks to evaluate
+    selected_masks = ['0671_01', '0300_01', '0231_00', '0063_00', '0553_01', '0095_01', '0655_00', '0329_02', '0549_00', '0217_00', '0334_02', '0702_00', '0355_01', '0164_03', '0606_00', '0474_05', '0389_00', '0684_01', '0670_01', '0256_00', '0100_01', '0084_02', '0580_00', '0488_00', '0050_02', '0426_00', '0651_02', '0663_00', '0559_01', '0353_00', '0684_00', '0583_01', '0552_01', '0357_01', '0599_01', '0334_00', '0139_00', '0575_01', '0277_02', '0629_02', '0353_02', '0607_00', '0432_00', '0458_01', '0406_02', '0030_02', '0088_01', '0559_00', '0435_03', '0643_00']
+    
+    all_masks_paths = sorted(glob(os.path.join(ctx.data.masks.masks_path, ctx.data.masks.masks_suffix)))
+    
+    # Filter masks_paths to only include selected scenes
+    masks_paths = []
+    for mask_path in all_masks_paths:
+        scene_id = mask_path.split('/')[-1].replace('scene', '').replace('_masks.pt', '')
+        if scene_id in selected_masks:
+            masks_paths.append(mask_path)
+    
+    print(f"[INFO] Selected masks: {[p.split('/')[-1].replace('scene', '').replace('_masks.pt', '') for p in masks_paths]}")
+    print(masks_paths)
+    
+    for masks_path in masks_paths:
 
         print(f"[INFO] Processing masks from {masks_path}")
         
@@ -56,68 +70,38 @@ def main(ctx: DictConfig):
                         depth_scale=ctx.data.depths.depth_scale)
 
         # 5. Run extractor
-        # features_extractor = FeaturesExtractor(camera=camera, 
-        #                                         clip_model=ctx.external.clip_model, 
-        #                                         images=images, 
-        #                                         masks=masks,
-        #                                         pointcloud=pointcloud, 
-        #                                         sam_model_type=ctx.external.sam_model_type,
-        #                                         sam_checkpoint=ctx.external.sam_checkpoint,
-        #                                         vis_threshold=ctx.openmask3d.vis_threshold,
-        #                                         device=device)
-        
-        features_extractor = FeaturesExtractorSiglip(camera=camera, 
-                                                siglip_model=ctx.external.siglip_model, 
-                                                images=images, 
-                                                masks=masks,
-                                                pointcloud=pointcloud, 
-                                                sam_model_type=ctx.external.sam_model_type,
-                                                sam_checkpoint=ctx.external.sam_checkpoint,
-                                                vis_threshold=ctx.openmask3d.vis_threshold,
-                                                device=device)
-        
-        # features_extractor.debug_mask_features(
-        #     target_mask_idx=1,  # Change this index as needed
-        #     topk=ctx.openmask3d.top_k, 
-        #     multi_level_expansion_ratio=ctx.openmask3d.multi_level_expansion_ratio,
-        #     num_levels=ctx.openmask3d.num_of_levels, 
-        #     num_random_rounds=ctx.openmask3d.num_random_rounds,
-        #     num_selected_points=ctx.openmask3d.num_selected_points,
-        #     display_point_cloud=True
-        # )
-
+        if ctx.external.feature_extractor_type == 'clip':
+            features_extractor = FeaturesExtractor(camera=camera, 
+                                                    clip_model=ctx.external.clip_model, 
+                                                    images=images, 
+                                                    masks=masks,
+                                                    pointcloud=pointcloud, 
+                                                    sam_model_type=ctx.external.sam_model_type,
+                                                    sam_checkpoint=ctx.external.sam_checkpoint,
+                                                    vis_threshold=ctx.openmask3d.vis_threshold,
+                                                    device=device)
+        elif ctx.external.feature_extractor_type == 'siglip':
+            features_extractor = FeaturesExtractorSiglip(camera=camera, 
+                                                    siglip_model=ctx.external.siglip_model, 
+                                                    images=images, 
+                                                    masks=masks,
+                                                    pointcloud=pointcloud, 
+                                                    sam_model_type=ctx.external.sam_model_type,
+                                                    sam_checkpoint=ctx.external.sam_checkpoint,
+                                                    vis_threshold=ctx.openmask3d.vis_threshold,
+                                                    device=device)
+        else:
+            raise ValueError(f"Unknown feature extractor type: {ctx.external.feature_extractor_type}. Supported types: 'clip', 'siglip'")
+    
         features = features_extractor.extract_features(topk=ctx.openmask3d.top_k, 
                                                         multi_level_expansion_ratio = ctx.openmask3d.multi_level_expansion_ratio,
                                                         num_levels=ctx.openmask3d.num_of_levels, 
                                                         num_random_rounds=ctx.openmask3d.num_random_rounds,
                                                         num_selected_points=ctx.openmask3d.num_selected_points,
-                                                        # save_crops=ctx.output.save_crops,
-                                                        save_crops=True,
+                                                        save_crops=ctx.output.save_crops,
+                                                        # save_crops=True,
                                                         out_folder=out_folder,
                                                         optimize_gpu_usage=ctx.gpu.optimize_gpu_usage)
-        
-        # You need to specify the index of the mask you want to debug.
-        # For example, to debug the first mask, use target_mask_idx=0
-        # features_extractor.debug_mask_features(
-        #     target_mask_idx=10,  # Change this index as needed
-        #     topk=ctx.openmask3d.top_k, 
-        #     multi_level_expansion_ratio=ctx.openmask3d.multi_level_expansion_ratio,
-        #     num_levels=ctx.openmask3d.num_of_levels, 
-        #     num_random_rounds=ctx.openmask3d.num_random_rounds,
-        #     num_selected_points=ctx.openmask3d.num_selected_points,
-        #     display_point_cloud=True
-        # )
-        # features_extractor.debug_mask_features(
-        #     target_mask_idx=1,  # Change this index as needed
-        #     topk=ctx.openmask3d.top_k, 
-        #     multi_level_expansion_ratio=ctx.openmask3d.multi_level_expansion_ratio,
-        #     num_levels=ctx.openmask3d.num_of_levels, 
-        #     num_random_rounds=ctx.openmask3d.num_random_rounds,
-        #     num_selected_points=ctx.openmask3d.num_selected_points,
-        #     display_point_cloud=True
-        # )
-
-        
         # 6. Save features
         filename = f"scene{scene_num_str}_openmask3d_features.npy"
         output_path = os.path.join(out_folder, filename)
@@ -125,19 +109,17 @@ def main(ctx: DictConfig):
         print(f"[INFO] Mask features for scene {scene_num_str} saved to {output_path}.")
 
 
-        # 7. Debugging
-        print(f"[INFO] Features shape: {features.shape}")
-        print(f"[INFO] Feature norms (first 10): {[np.linalg.norm(features[i]) for i in range(min(10, len(features)))]}")
-        print(f"[INFO] Feature value ranges (first 3 masks):")
-        for i in range(min(3, len(features))):
-            feat = features[i]
-            print(f"  Mask {i}: {feat.min():.6f} - {feat.max():.6f}")
+        # # 7. Debugging
+        # print(f"[INFO] Features shape: {features.shape}")
+        # print(f"[INFO] Feature norms (first 10): {[np.linalg.norm(features[i]) for i in range(min(10, len(features)))]}")
+        # print(f"[INFO] Feature value ranges (first 3 masks):")
+        # for i in range(min(3, len(features))):
+        #     feat = features[i]
+            # print(f"  Mask {i}: {feat.min():.6f} - {feat.max():.6f}")
     
 
-        print(f"[INFO] Finished processing scene {scene_num_str}.")
-        break
-    
-    
+        # print(f"[INFO] Finished processing scene {scene_num_str}.")
+        # break
     
 if __name__ == "__main__":
     main()

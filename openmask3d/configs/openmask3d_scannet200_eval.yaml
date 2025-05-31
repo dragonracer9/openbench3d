@@ -26,6 +26,7 @@ openmask3d:
   num_selected_points: 5
 
 external:
+  feature_extractor_type: 'siglip'  # Options: 'clip', 'siglip'
   sam_checkpoint: '/cluster/scratch/efedele/checkpoints/sam_vit_h_4b8939.pth'
   sam_model_type: 'vit_h'
   clip_model: 'ViT-L/14@336px'
