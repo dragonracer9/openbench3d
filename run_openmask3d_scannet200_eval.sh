@@ -88,80 +88,46 @@ EXPERIMENT_NAME="scannet200"
 OUTPUT_DIRECTORY="$(pwd)/output"
 SAVE_VISUALIZATIONS=false
 OPTIMIZE_GPU_USAGE=false
+OUTPUT_FOLDER_DIRECTORY="${OUTPUT_DIRECTORY}/siglip"
+MASK_SAVE_DIR="${OUTPUT_FOLDER_DIRECTORY}/masks"
+MASK_FEATURE_SAVE_DIR="${OUTPUT_FOLDER_DIRECTORY}/mask_features"
 
-# Set resume point (options: "", "step1", "step2")
-RESUME_FROM=$1
+# # Set resume point (options: "", "step1", "step2")
+# RESUME_FROM=$1
 
-if [[ "$RESUME_FROM" == "step1" || "$RESUME_FROM" == "step2" ]]; then
-    # RESUME FROM PREVIOUS TIMESTAMP
-    # PREVIOUS_RUN="2025-05-16-19-25-19-scannet200"
-    PREVIOUS_RUN="siglip"
-    OUTPUT_FOLDER_DIRECTORY="${OUTPUT_DIRECTORY}/${PREVIOUS_RUN}"
-    MASK_SAVE_DIR="${OUTPUT_FOLDER_DIRECTORY}/masks"
-    MASK_FEATURE_SAVE_DIR="${OUTPUT_FOLDER_DIRECTORY}/mask_features"
-else
-    # FRESH RUN
-    TIMESTAMP=$(date +"%Y-%m-%d-%H-%M-%S")
-    OUTPUT_FOLDER_DIRECTORY="${OUTPUT_DIRECTORY}/${TIMESTAMP}-${EXPERIMENT_NAME}"
-    MASK_SAVE_DIR="${OUTPUT_FOLDER_DIRECTORY}/masks"
-    MASK_FEATURE_SAVE_DIR="${OUTPUT_FOLDER_DIRECTORY}/mask_features"
-fi
+# if [[ "$RESUME_FROM" == "step1" || "$RESUME_FROM" == "step2" ]]; then
+#     # RESUME FROM PREVIOUS TIMESTAMP
+#     # PREVIOUS_RUN="2025-05-16-19-25-19-scannet200"
+#     PREVIOUS_RUN="siglip"
+#     OUTPUT_FOLDER_DIRECTORY="${OUTPUT_DIRECTORY}/${PREVIOUS_RUN}"
+#     MASK_SAVE_DIR="${OUTPUT_FOLDER_DIRECTORY}/masks"
+#     MASK_FEATURE_SAVE_DIR="${OUTPUT_FOLDER_DIRECTORY}/mask_features"
+# else
+#     # FRESH RUN
+#     TIMESTAMP=$(date +"%Y-%m-%d-%H-%M-%S")
+#     OUTPUT_FOLDER_DIRECTORY="${OUTPUT_DIRECTORY}/${TIMESTAMP}-${EXPERIMENT_NAME}"
+#     MASK_SAVE_DIR="${OUTPUT_FOLDER_DIRECTORY}/masks"
+#     MASK_FEATURE_SAVE_DIR="${OUTPUT_FOLDER_DIRECTORY}/mask_features"
+# fi
 
 SCANNET_LABEL_DB_PATH="${SCANNET_PROCESSED_DIR%/}/label_database.yaml"
 SCANNET_INSTANCE_GT_DIR="${SCANNET_PROCESSED_DIR%/}/instance_gt/validation"
 
 cd openmask3d
 
-if [[ "$RESUME_FROM" != "step1" && "$RESUME_FROM" != "step2" ]]; then
-    echo "[INFO] Running STEP 1: Mask Computation"
-    python class_agnostic_mask_computation/get_masks_scannet200.py \
-        general.experiment_name=${EXPERIMENT_NAME} \
-        general.project_name="scannet200" \
-        general.checkpoint=${MASK_MODULE_CKPT_PATH} \
-        general.train_mode=false \
-        model.num_queries=150 \
-        general.use_dbscan=true \
-        general.dbscan_eps=0.95 \
-        general.save_visualizations=${SAVE_VISUALIZATIONS} \
-        data.test_dataset.data_dir=${SCANNET_PROCESSED_DIR}  \
-        data.validation_dataset.data_dir=${SCANNET_PROCESSED_DIR} \
-        data.train_dataset.data_dir=${SCANNET_PROCESSED_DIR} \
-        data.train_dataset.label_db_filepath=${SCANNET_LABEL_DB_PATH} \
-        data.validation_dataset.label_db_filepath=${SCANNET_LABEL_DB_PATH} \
-        data.test_dataset.label_db_filepath=${SCANNET_LABEL_DB_PATH}  \
-        general.mask_save_dir=${MASK_SAVE_DIR} \
-        hydra.run.dir="${OUTPUT_FOLDER_DIRECTORY}/hydra_outputs/class_agnostic_mask_computation"
-    echo "[INFO] Step 1 complete: Masks saved to ${MASK_SAVE_DIR}"
-else
-    echo "[INFO] Skipping STEP 1 (Mask Computation)"
-fi
-
-if [[ "$RESUME_FROM" != "step2" ]]; then
-    echo "[INFO] Running STEP 2: Feature Computation"
-    python compute_features_scannet200.py \
-        data.scans_path=${SCANS_PATH} \
-        data.masks.masks_path=${MASK_SAVE_DIR} \
-        output.output_directory=${MASK_FEATURE_SAVE_DIR} \
-        output.experiment_name=${EXPERIMENT_NAME} \
-        external.sam_checkpoint=${SAM_CKPT_PATH} \
-        gpu.optimize_gpu_usage=${OPTIMIZE_GPU_USAGE} \
-        hydra.run.dir="${OUTPUT_FOLDER_DIRECTORY}/hydra_outputs/mask_features_computation"
-    echo "[INFO] Step 2 complete: Features saved to ${MASK_FEATURE_SAVE_DIR}"
-else
-    echo "[INFO] Skipping STEP 2 (Feature Computation)"
-fi
-
 # echo "[INFO] Running STEP 3: Evaluation"
 # python evaluation/run_eval_close_vocab_inst_seg.py \
 #     --gt_dir=${SCANNET_INSTANCE_GT_DIR} \
 #     --mask_pred_dir=${MASK_SAVE_DIR} \
-#     --mask_features_dir=${MASK_FEATURE_SAVE_DIR}
+#     --mask_features_dir=${MASK_FEATURE_SAVE_DIR} \
+#     --scene_list_file="evaluation/val_scenes_scannet200.txt"
 # echo "[INFO] Evaluation complete"
 
 echo "[INFO] Running STEP 3: Evaluation"
 python evaluation/run_eval_close_vocab_inst_seg_siglip.py \
-    --gt_dir=${SCANNET_INSTANCE_GT_DIR} \
-    --mask_pred_dir=${MASK_SAVE_DIR} \
-    --mask_features_dir=${MASK_FEATURE_SAVE_DIR} \
-    --model_type='google/siglip-base-patch16-384'
+   --gt_dir=${SCANNET_INSTANCE_GT_DIR} \
+   --mask_pred_dir=${MASK_SAVE_DIR} \
+   --mask_features_dir=${MASK_FEATURE_SAVE_DIR} \
+   --scene_list_file="evaluation/val_scenes_scannet200.txt" \
+   --model_type='google/siglip-base-patch16-384'
 echo "[INFO] Evaluation complete"
