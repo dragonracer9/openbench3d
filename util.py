@@ -171,8 +171,8 @@ def rename_intrinsics(path: os.PathLike):
 def pth_to_ply(path3d: os.PathLike): # try to undo data-preprocessing done by openscene on the 3d files from scannet
     with os.scandir(path3d ) as it:
         ply_filenames = np.array([entry.name for entry in it if not entry.name.startswith('.') and entry.is_file()])
-    ply_filenames = np.array([x.replace('_vh_clean_2.pth', '_vh_clean_2.ply') for x in ply_filenames])
-    print(ply_filenames)
+    # ply_filenames = np.array([x.replace('_vh_clean_2.pth', '_vh_clean_2.ply') for x in ply_filenames])
+    # print(ply_filenames)
     
     out_dir = path3d + '/' + "ply"
     os.makedirs(out_dir)
