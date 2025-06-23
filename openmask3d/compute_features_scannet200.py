@@ -1,3 +1,6 @@
+import os
+os.environ["CUBLAS_WORKSPACE_CONFIG"] = ":4096:8"
+
 import hydra
 from omegaconf import DictConfig
 import numpy as np
@@ -5,7 +8,7 @@ from openmask3d.data.load import Camera, InstanceMasks3D, Images, PointCloud, ge
 from openmask3d.utils import get_free_gpu, create_out_folder
 from openmask3d.mask_features_computation.features_extractor import FeaturesExtractor
 import torch
-import os
+import time
 from glob import glob
 
 # TIP: add version_base=None to the arguments if you encounter some error  
@@ -76,16 +79,32 @@ def main(ctx: DictConfig):
                         depth_scale=ctx.data.depths.depth_scale)
 
         # 5. Run extractor
-        features_extractor = FeaturesExtractor(camera=camera, 
-                                                clip_model=ctx.external.clip_model, 
-                                                images=images, 
-                                                masks=masks,
-                                                pointcloud=pointcloud, 
-                                                sam_model_type=ctx.external.sam_model_type,
-                                                sam_checkpoint=ctx.external.sam_checkpoint,
-                                                vis_threshold=ctx.openmask3d.vis_threshold,
-                                                device=device)
-
+        if ctx.external.feature_extractor_type == 'clip' or ctx.external.feature_extractor_type == 'blip' or ctx.external.feature_extractor_type == 'eva':
+            features_extractor = FeaturesExtractor(camera=camera, 
+                                                    clip_model=ctx.external.clip_model, 
+                                                    images=images, 
+                                                    masks=masks,
+                                                    pointcloud=pointcloud, 
+                                                    sam_model_type=ctx.external.sam_model_type,
+                                                    sam_checkpoint=ctx.external.sam_checkpoint,
+                                                    vis_threshold=ctx.openmask3d.vis_threshold,
+                                                    model_type=ctx.external.feature_extractor_type,
+                                                    inpainting=ctx.openmask3d.use_inpainting,
+                                                    seed=ctx.gpu.seed,
+                                                    device=device)
+        elif ctx.external.feature_extractor_type == 'siglip':
+            features_extractor = FeaturesExtractorSiglip(camera=camera, 
+                                                    siglip_model=ctx.external.siglip_model, 
+                                                    images=images, 
+                                                    masks=masks,
+                                                    pointcloud=pointcloud, 
+                                                    sam_model_type=ctx.external.sam_model_type,
+                                                    sam_checkpoint=ctx.external.sam_checkpoint,
+                                                    vis_threshold=ctx.openmask3d.vis_threshold,
+                                                    device=device)
+        else:
+            raise ValueError(f"Unknown feature extractor type: {ctx.external.feature_extractor_type}. Supported types: 'clip', 'siglip', 'eva', 'blip'.") 
+    
         features = features_extractor.extract_features(topk=ctx.openmask3d.top_k, 
                                                         multi_level_expansion_ratio = ctx.openmask3d.multi_level_expansion_ratio,
                                                         num_levels=ctx.openmask3d.num_of_levels, 
@@ -99,9 +118,25 @@ def main(ctx: DictConfig):
         filename = f"scene{scene_num_str}_openmask3d_features.npy"
         output_path = os.path.join(out_folder, filename)
         np.save(output_path, features)
+        
+        # Calculate and print scene processing time
+        scene_end_time = time.time()
+        scene_total_time = scene_end_time - scene_start_time
         print(f"[INFO] Mask features for scene {scene_num_str} saved to {output_path}.")
+        print(f"[TIMING] Scene {scene_num_str} completed in {scene_total_time:.1f}s ({scene_total_time/60:.1f} minutes)")
+
+
+        # # 7. Debugging
+        # print(f"[INFO] Features shape: {features.shape}")
+        # print(f"[INFO] Feature norms (first 10): {[np.linalg.norm(features[i]) for i in range(min(10, len(features)))]}")
+        # print(f"[INFO] Feature value ranges (first 3 masks):")
+        # for i in range(min(3, len(features))):
+        #     feat = features[i]
+            # print(f"  Mask {i}: {feat.min():.6f} - {feat.max():.6f}")
     
-    
+
+        # print(f"[INFO] Finished processing scene {scene_num_str}.")
+        # break
     
 if __name__ == "__main__":
     main()

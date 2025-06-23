@@ -1,10 +1,59 @@
+# Large directories and datasets
 /MinkowskiEngine
 /datasets
-/openmask3d.egg-info
-/output
+/data/
+/outputs/
+/output/
 /ScanNet
+
+# Model resources and checkpoints
 /resources
+
+# Build and installation artifacts
+/openmask3d.egg-info
 **/__pycache__/
-/openmask3d/class_agnostic_mask_computation/data/processed/scannet
-/.vscode
+/venv/
+/env/
+*.pyc
+*.pyo
+*.pyd
+__pycache__/
+
+# Data processing and computed results
+/openmask3d/class_agnostic_mask_computation/data/
+/openmask3d/class_agnostic_mask_computation/datasets/processed/
 /openmask3d/class_agnostic_mask_computation/third_party/pointnet2
+
+# IDE and editor files
+/.vscode/
+/.idea/
+*.swp
+*.swo
+*~
+
+# Jupyter notebook checkpoints
+.ipynb_checkpoints/
+
+# Temporary and debug files
+*.tmp
+*.log
+temp_*
+debug_*
+
+# Test outputs and experiments
+test_output*/
+experiment_*/
+test_*.py
+debugging.*
+extract_features_*.py
+siglip_analysis.py
+comprehensive_*.py
+
+# OS generated files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db

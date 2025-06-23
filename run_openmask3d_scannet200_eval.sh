@@ -80,14 +80,15 @@ set -e
 
 # --------
 # Parameters (edit these!)
-SCANS_PATH="$(pwd)/datasets/data/scans"
-SCANNET_PROCESSED_DIR="$(pwd)/openmask3d/class_agnostic_mask_computation/data/processed/scannet"
+SCANS_PATH="/home/ninol/openbench3d/data/scans"
+SCANNET_PROCESSED_DIR="$(pwd)/openmask3d/class_agnostic_mask_computation/datasets/processed/scannet"
 MASK_MODULE_CKPT_PATH="$(pwd)/resources/scannet200_val.ckpt"
 SAM_CKPT_PATH="$(pwd)/resources/sam_vit_h_4b8939.pth"
 EXPERIMENT_NAME="scannet200"
 OUTPUT_DIRECTORY="$(pwd)/output"
 SAVE_VISUALIZATIONS=false
 OPTIMIZE_GPU_USAGE=false
+MODEL="clip" # options: "clip", "siglip", 'blip', 'eva'
 
 # Set resume point (options: "", "step1", "step2")
 RESUME_FROM=$1
@@ -144,6 +145,7 @@ if [[ "$RESUME_FROM" != "step2" ]]; then
         output.output_directory=${MASK_FEATURE_SAVE_DIR} \
         output.experiment_name=${EXPERIMENT_NAME} \
         external.sam_checkpoint=${SAM_CKPT_PATH} \
+        external.feature_extractor_type=${MODEL} \
         gpu.optimize_gpu_usage=${OPTIMIZE_GPU_USAGE} \
         hydra.run.dir="${OUTPUT_FOLDER_DIRECTORY}/hydra_outputs/mask_features_computation"
     echo "[INFO] Step 2 complete: Features saved to ${MASK_FEATURE_SAVE_DIR}"
@@ -151,17 +153,23 @@ else
     echo "[INFO] Skipping STEP 2 (Feature Computation)"
 fi
 
-# echo "[INFO] Running STEP 3: Evaluation"
-# python evaluation/run_eval_close_vocab_inst_seg.py \
-#     --gt_dir=${SCANNET_INSTANCE_GT_DIR} \
-#     --mask_pred_dir=${MASK_SAVE_DIR} \
-#     --mask_features_dir=${MASK_FEATURE_SAVE_DIR}
-# echo "[INFO] Evaluation complete"
+if [[ "$MODEL" == "clip" || "$MODEL" == "eva" || "$MODEL" == "blip" ]]; then
+    EVAL_SCRIPT="evaluation/run_eval_close_vocab_inst_seg.py"
+    EVAL_ARGS="--model_type=${MODEL}"
+elif [[ "$MODEL" == "siglip" ]]; then
+    EVAL_SCRIPT="evaluation/run_eval_close_vocab_inst_seg_siglip.py"
+    EVAL_ARGS="--model_type='google/siglip-base-patch16-384'"
+else
+    echo "[ERROR] Unknown MODEL: $MODEL"
+    exit 1
+fi
 
-echo "[INFO] Running STEP 3: Evaluation"
-python evaluation/run_eval_close_vocab_inst_seg_siglip.py \
+echo "[INFO] Running STEP 3: Evaluation ($MODEL)"
+python $EVAL_SCRIPT \
     --gt_dir=${SCANNET_INSTANCE_GT_DIR} \
     --mask_pred_dir=${MASK_SAVE_DIR} \
     --mask_features_dir=${MASK_FEATURE_SAVE_DIR} \
-    --model_type='google/siglip-base-patch16-384'
+    # --sentence_structure="a photography of a {}" \
+    # --sentence_structure="a {} in a scene" \
+    $EVAL_ARGS
 echo "[INFO] Evaluation complete"
