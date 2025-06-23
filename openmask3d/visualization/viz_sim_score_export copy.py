@@ -1,17 +1,10 @@
-import matplotlib.cm
-import matplotlib
-import os
-import sys
-import argparse
 import numpy as np
 import open3d as o3d
 import torch
 import clip
+import pdb
 import matplotlib.pyplot as plt
 from constants import *
-
-
-
 
 
 class QuerySimilarityComputation():
@@ -64,65 +57,67 @@ class QuerySimilarityComputation():
             openmask3d_per_mask_scores_rescaled = new_scores
 
         new_colors = np.ones((masks.shape[1], 3))*0 + background_color
-        jet = matplotlib.cm.get_cmap("jet")
+        
         for mask_idx, mask in enumerate(masks[::-1, :]):
             # get color from matplotlib colormap
-            new_colors[mask>0.5, :] = jet(openmask3d_per_mask_scores_rescaled[len(masks)-mask_idx-1])[:3]
+            new_colors[mask>0.5, :] = plt.cm.jet(openmask3d_per_mask_scores_rescaled[len(masks)-mask_idx-1])[:3]
 
         return new_colors
 
 
 
-def cli_query_loop(scene_name: str):
-        # ─── Paths based on the chosen scene ─────────────────────────────────
-    base_scan_dir = "/home/ninol/openbench3d/data/scans"
-    base_masks_dir = "/home/ninol/openbench3d/output/clip/masks"
-    base_feats_dir = "/home/ninol/openbench3d/output/clip/mask_features_final"
+def main():
+    # --------------------------------
+    # Set the paths
+    # --------------------------------
+    path_scene_pcd = "/home/ninol/openbench3d/data/scans/scene0030_02/scene0030_02_vh_clean_2.ply"
+    path_pred_masks = "/home/ninol/openbench3d/output/clip/masks/scene0030_02_masks.pt"
+    path_openmask3d_features = "/home/ninol/openbench3d/output/clip/mask_features_final/scene0030_02_openmask3d_features.npy"
+    
 
-    #  Make sure scene exists
-    pcd_path = os.path.join(base_scan_dir, f"{scene_name}/{scene_name}_vh_clean_2.ply")
-    masks_path = os.path.join(base_masks_dir, f"{scene_name}_masks.pt")
-    feats_path = os.path.join(base_feats_dir, f"{scene_name}_openmask3d_features.npy")
+    # --------------------------------
+    # Load data
+    # --------------------------------
+    # load the scene pcd
+    scene_pcd = o3d.io.read_point_cloud(path_scene_pcd)
+    
+    # load the predicted masks
+    pred_masks = np.asarray(torch.load(path_pred_masks)).T # (num_instances, num_points)
 
-    if not (os.path.isfile(pcd_path) and
-            os.path.isfile(masks_path) and
-            os.path.isfile(feats_path)):
-        # List available scenes by looking in features folder
-        available = []
-        for fname in os.listdir(base_feats_dir):
-            if fname.endswith("_openmask3d_features.npy"):
-                available.append(fname.replace("_openmask3d_features.npy", ""))
-        print(f"Scene '{scene_name}' not found.\nAvailable scenes:")
-        for s in sorted(available):
-            print("  •", s)
-        sys.exit(1)
+    # load the openmask3d features
+    openmask3d_features = np.load(path_openmask3d_features) # (num_instances, 768)
+
+    # initialize the query similarity computer
     query_similarity_computer = QuerySimilarityComputation()
-    scene_pcd = o3d.io.read_point_cloud(pcd_path)
-    pred_masks = np.asarray(torch.load(masks_path)).T
-    openmask3d_features = np.load(feats_path)
-    print("Type a query and press Enter to update the visualization. Type 'exit' to quit.")
-    last_query = "a table in a scene"
-    while True:
-        query = input(f"Query [{last_query}]: ").strip()
-        if query == "":
-            query = last_query
-        if query.lower() == "exit":
-            break
-        last_query = query
-        per_mask_query_sim_scores = query_similarity_computer.compute_similarity_scores(
-            openmask3d_features, query)
-        per_point_similarity_colors = query_similarity_computer.get_per_point_colors_for_similarity(
-            per_mask_query_sim_scores, pred_masks)
-        scene_pcd.colors = o3d.utility.Vector3dVector(per_point_similarity_colors)
-        o3d.visualization.draw_geometries([scene_pcd], window_name=f"Query: {query}")
+    
+
+    # --------------------------------
+    # Set the query text
+    # --------------------------------
+    query_text = "a table in a scene" # change the query text here
+
+
+    # --------------------------------
+    # Get the similarity scores
+    # --------------------------------
+    # get the per mask similarity scores, i.e. the cosine similarity between the query embedding and each openmask3d mask-feature for each object instance
+    per_mask_query_sim_scores = query_similarity_computer.compute_similarity_scores(openmask3d_features, query_text)
+
+
+    # --------------------------------
+    # Visualize the similarity scores
+    # --------------------------------
+    # get the per-point heatmap colors for the similarity scores
+    per_point_similarity_colors = query_similarity_computer.get_per_point_colors_for_similarity(per_mask_query_sim_scores, pred_masks) # note: for normalizing the similarity heatmap colors for better clarity, you can check the arguments for the function get_per_point_colors_for_similarity
+
+    # visualize the scene with the similarity heatmap
+    scene_pcd_w_sim_colors = o3d.geometry.PointCloud()
+    scene_pcd_w_sim_colors.points = scene_pcd.points
+    scene_pcd_w_sim_colors.colors = o3d.utility.Vector3dVector(per_point_similarity_colors)
+    scene_pcd_w_sim_colors.estimate_normals()
+    o3d.visualization.draw_geometries([scene_pcd_w_sim_colors])
+    # alternatively, you can save the scene_pcd_w_sim_colors as a .ply file
+    # o3d.io.write_point_cloud("data/scene_pcd_w_sim_colors_{}.ply".format('_'.join(query_text.split(' '))), scene_pcd_w_sim_colors)
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser()
-    parser.add_argument(
-        "scene",
-        nargs="?",
-        default="scene0030_02",
-        help="Name of the ScanNet scene (e.g. 'scene0030_02').",
-    )
-    args = parser.parse_args()
-    cli_query_loop(args.scene)
+    main()

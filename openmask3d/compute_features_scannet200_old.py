@@ -1,14 +1,12 @@
-import os
-os.environ["CUBLAS_WORKSPACE_CONFIG"] = ":4096:8"
-
 import hydra
 from omegaconf import DictConfig
 import numpy as np
 from openmask3d.data.load import Camera, InstanceMasks3D, Images, PointCloud, get_number_of_images
 from openmask3d.utils import get_free_gpu, create_out_folder
 from openmask3d.mask_features_computation.features_extractor import FeaturesExtractor
-from openmask3d.mask_features_computation.features_extractor_siglip import FeaturesExtractorSiglip
+from openmask3d.mask_features_computation.features_extractor_siglip_old import FeaturesExtractorSiglipOld
 import torch
+import os
 import time
 from glob import glob
 
@@ -32,8 +30,7 @@ def main(ctx: DictConfig):
     
     # Selected subset of masks to evaluate
     # selected_masks = ['0671_01', '0300_01', '0231_00', '0063_00', '0553_01', '0095_01', '0655_00', '0329_02', '0549_00', '0217_00', '0334_02', '0702_00', '0355_01', '0164_03', '0606_00', '0474_05', '0389_00', '0684_01', '0670_01', '0256_00', '0100_01', '0084_02', '0580_00', '0488_00', '0050_02', '0426_00', '0651_02', '0663_00', '0559_01', '0353_00', '0684_00', '0583_01', '0552_01', '0357_01', '0599_01', '0334_00', '0139_00', '0575_01', '0277_02', '0629_02', '0353_02', '0607_00', '0432_00', '0458_01', '0406_02', '0030_02', '0088_01', '0559_00', '0435_03', '0643_00']
-    selected_masks = ['0011_00']#, '0671_01', '0300_01']
-    # selected_masks = ['0684_01']
+    selected_masks = ['0011_00', '0671_01', '0300_01']
     all_masks_paths = sorted(glob(os.path.join(ctx.data.masks.masks_path, ctx.data.masks.masks_suffix)))
     
     # Filter masks_paths to only include selected scenes
@@ -85,7 +82,7 @@ def main(ctx: DictConfig):
                         depth_scale=ctx.data.depths.depth_scale)
 
         # 5. Run extractor
-        if ctx.external.feature_extractor_type == 'clip' or ctx.external.feature_extractor_type == 'blip' or ctx.external.feature_extractor_type == 'eva':
+        if ctx.external.feature_extractor_type == 'clip':
             features_extractor = FeaturesExtractor(camera=camera, 
                                                     clip_model=ctx.external.clip_model, 
                                                     images=images, 
@@ -94,12 +91,9 @@ def main(ctx: DictConfig):
                                                     sam_model_type=ctx.external.sam_model_type,
                                                     sam_checkpoint=ctx.external.sam_checkpoint,
                                                     vis_threshold=ctx.openmask3d.vis_threshold,
-                                                    model_type=ctx.external.feature_extractor_type,
-                                                    inpainting=ctx.openmask3d.use_inpainting,
-                                                    seed=ctx.gpu.seed,
                                                     device=device)
         elif ctx.external.feature_extractor_type == 'siglip':
-            features_extractor = FeaturesExtractorSiglip(camera=camera, 
+            features_extractor = FeaturesExtractorSiglipOld(camera=camera, 
                                                     siglip_model=ctx.external.siglip_model, 
                                                     images=images, 
                                                     masks=masks,
@@ -109,7 +103,7 @@ def main(ctx: DictConfig):
                                                     vis_threshold=ctx.openmask3d.vis_threshold,
                                                     device=device)
         else:
-            raise ValueError(f"Unknown feature extractor type: {ctx.external.feature_extractor_type}. Supported types: 'clip', 'siglip', 'eva', 'blip'.") 
+            raise ValueError(f"Unknown feature extractor type: {ctx.external.feature_extractor_type}. Supported types: 'clip', 'siglip'")
     
         features = features_extractor.extract_features(topk=ctx.openmask3d.top_k, 
                                                         multi_level_expansion_ratio = ctx.openmask3d.multi_level_expansion_ratio,

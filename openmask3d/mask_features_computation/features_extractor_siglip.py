@@ -413,6 +413,18 @@ class FeaturesExtractorSiglip:
                  sam_checkpoint,
                  vis_threshold,
                  device):
+        # Set random seeds for deterministic behavior
+        import random
+        seed = 42
+        random.seed(seed)
+        np.random.seed(seed)
+        torch.manual_seed(seed)
+        torch.cuda.manual_seed_all(seed)
+        torch.backends.cudnn.deterministic = True
+        torch.backends.cudnn.benchmark = False
+        import os
+        os.environ['PYTHONHASHSEED'] = str(seed)
+        
         self.camera = camera
         self.images = images
         self.device = device
@@ -446,6 +458,14 @@ class FeaturesExtractorSiglip:
         #                         ])
     
     def extract_features(self, topk, multi_level_expansion_ratio, num_levels, num_random_rounds, num_selected_points, save_crops, out_folder, optimize_gpu_usage=False):
+        # Set random seeds again for consistent behavior across runs
+        import random
+        seed = 42
+        random.seed(seed)
+        np.random.seed(seed)
+        torch.manual_seed(seed)
+        torch.cuda.manual_seed_all(seed)
+        
         # Add timing for the entire function
         total_start_time = time.time()
         
@@ -507,7 +527,9 @@ class FeaturesExtractorSiglip:
                                             num_random_rounds=num_random_rounds,
                                             num_selected_points=num_selected_points,
                                             point_coords=point_coords,
-                                            predictor_sam=self.predictor_sam)
+                                            predictor_sam=self.predictor_sam,
+                                            mask_id=mask,
+                                            view_id=view)
                         sam_time = time.time() - sam_start
                         sam_total_time += sam_time
                         

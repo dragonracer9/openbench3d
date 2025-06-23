@@ -37,7 +37,7 @@ class SigLIPInstSegEvaluator:
         self.text_query_embeddings = text_feats.cpu().numpy()
         
         print("Text embeddings shape:", self.text_query_embeddings.shape)
-        print("Text embeddings norm (first 5):", np.linalg.norm(self.text_query_embeddings[:5], axis=1))
+        # print("Text embeddings norm (first 5):", np.linalg.norm(self.text_query_embeddings[:5], axis=1))
 
         self.set_label_and_color_mapper(dataset_type)
 
@@ -83,20 +83,20 @@ class SigLIPInstSegEvaluator:
     def compute_classes_per_mask(self, masks_path: str, features_path: str, keep_first=None):
         masks = torch.load(masks_path)
         feats = np.load(features_path)
-        print("Mask features shape:", feats.shape)
-        print("Mask features norm (first 5):", np.linalg.norm(feats[:5], axis=1))
+        # print("Mask features shape:", feats.shape)
+        # print("Mask features norm (first 5):", np.linalg.norm(feats[:5], axis=1))
         if keep_first is not None:
             masks = masks[:, :keep_first]
             feats = feats[:keep_first]
         feats = feats / np.linalg.norm(feats, axis=1, keepdims=True)
         sims = feats @ self.text_query_embeddings.T
 
-        print("Similarity matrix shape:", sims.shape)
-        print("Similarity matrix stats: min", np.min(sims), "max", np.max(sims), "mean", np.mean(sims))
-        print("First 5 similarities:", sims[:5])
+        # print("Similarity matrix shape:", sims.shape)
+        # print("Similarity matrix stats: min", np.min(sims), "max", np.max(sims), "mean", np.mean(sims))
+        # print("First 5 similarities:", sims[:5])
 
-        zero_feats = np.where(np.linalg.norm(feats, axis=1) == 0)[0]
-        print(f"All-zero feature indices: {zero_feats[:10]} (total: {len(zero_feats)})")    
+        # zero_feats = np.where(np.linalg.norm(feats, axis=1) == 0)[0]
+        # print(f"All-zero feature indices: {zero_feats[:10]} (total: {len(zero_feats)})")    
 
         best = np.argmax(sims, axis=1)
         best_scores = np.max(sims, axis=1)
@@ -117,13 +117,13 @@ class SigLIPInstSegEvaluator:
     def compute_classes_per_mask_diff_scores(self, masks_path: str, features_path: str, keep_first=None):
         pred_masks = torch.load(masks_path)
 
-        print("Predicted masks shape:", pred_masks.shape)
-        print("Nonzero mask elements (first 5 masks):", [np.count_nonzero(pred_masks[:,i]) for i in range(min(5, pred_masks.shape[1]))])
+        # print("Predicted masks shape:", pred_masks.shape)
+        # print("Nonzero mask elements (first 5 masks):", [np.count_nonzero(pred_masks[:,i]) for i in range(min(5, pred_masks.shape[1]))])
 
         feats = np.load(features_path)
 
-        print("Mask features shape:", feats.shape)
-        print("Mask features norm (first 5):", np.linalg.norm(feats[:5], axis=1))
+        # print("Mask features shape:", feats.shape)
+        # print("Mask features norm (first 5):", np.linalg.norm(feats[:5], axis=1))
         
         keep_mask = np.ones(pred_masks.shape[1], dtype=bool)
         if keep_first is not None:
@@ -159,19 +159,19 @@ class SigLIPInstSegEvaluator:
         else:
             confidence_scores = np.ones_like(best_scores) * 0.5
         
-        print("Similarity matrix shape:", sims.shape)
-        print("Similarity matrix stats: min", np.min(sims), "max", np.max(sims), "mean", np.mean(sims))
-        print("First 5 similarities:", sims[:5])
-        print("Best scores range:", np.min(best_scores), "to", np.max(best_scores))
-        print("Confidence scores range:", np.min(confidence_scores), "to", np.max(confidence_scores))
+        # print("Similarity matrix shape:", sims.shape)
+        # print("Similarity matrix stats: min", np.min(sims), "max", np.max(sims), "mean", np.mean(sims))
+        # print("First 5 similarities:", sims[:5])
+        # print("Best scores range:", np.min(best_scores), "to", np.max(best_scores))
+        # print("Confidence scores range:", np.min(confidence_scores), "to", np.max(confidence_scores))
 
-        zero_feats = np.where(np.linalg.norm(feats, axis=1) == 0)[0]
-        print(f"All-zero feature indices: {zero_feats[:10]} (total: {len(zero_feats)})")    
+        # zero_feats = np.where(np.linalg.norm(feats, axis=1) == 0)[0]
+        # print(f"All-zero feature indices: {zero_feats[:10]} (total: {len(zero_feats)})")    
 
         
-        print("Predicted class indices (first 10):", idxs[:10])
-        print("Mapped class IDs (first 10):", classes[:10])
-        print("Confidence scores (first 10):", confidence_scores[:10])
+        # print("Predicted class indices (first 10):", idxs[:10])
+        # print("Mapped class IDs (first 10):", classes[:10])
+        # print("Confidence scores (first 10):", confidence_scores[:10])
 
         return (
             pred_masks[:, keep_mask],
