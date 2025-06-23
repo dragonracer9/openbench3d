@@ -65,6 +65,18 @@ for i in range(len(VALID_CLASS_IDS)):
     ID_TO_LABEL[VALID_CLASS_IDS[i]] = CLASS_LABELS[i]
 
 HEAD_CATS_SCANNET_200, COMMON_CATS_SCANNET_200, TAIL_CATS_SCANNET_200 = None, None, None
+SCANNET_200_HIERARCHICAL_CLASSES = None
+
+try:
+    with open("evaluation/labels_hierarchical_classes.txt", "r", encoding="utf-8") as f:
+        namespace = {}
+        exec(f.read(), namespace)
+        SCANNET_200_HIERARCHICAL_CLASSES = namespace["SCANNET_200_HIERARCHICAL_CLASSES"]
+    print("Hierarchy loaded successfully")
+except Exception as e:
+    print(f"Warning: Could not load hierarchy file: {e}")
+    SCANNET_200_HIERARCHICAL_CLASSES = {}
+    
 
 # ---------- Evaluation params ---------- #
 # overlaps for evaluation
@@ -77,6 +89,52 @@ opt['distance_threshes'] = np.array([float('inf')])
 # distance confidences
 opt['distance_confs'] = np.array([-float('inf')])
 
+def build_hierarchy_mapping():
+    """Build a simple mapping from child -> parent for hierarchical matching"""
+    child_to_parent = {}
+    
+    def process_level(items, parent=None):
+        for key, value in items.items():
+            if parent:
+                child_to_parent[key] = parent
+            
+            if isinstance(value, dict):
+                process_level(value, key)
+            elif isinstance(value, list):
+                for item in value:
+                    child_to_parent[item] = key
+    
+    if SCANNET_200_HIERARCHICAL_CLASSES:
+        process_level(SCANNET_200_HIERARCHICAL_CLASSES)
+    
+    return child_to_parent
+
+def is_hierarchical_match(gt_label, pred_label, child_to_parent):
+    """
+    Check if a prediction is hierarchically correct for a GT label.
+    Returns True if:
+    - Exact match: gt_label == pred_label
+    - Child -> Parent: gt_label="folded chair", pred_label="chair" 
+    """
+    if gt_label == pred_label:
+        return True
+    
+    # Check if pred_label is an ancestor of gt_label
+    current = gt_label
+    max_depth = 10  # Prevent infinite loops
+    for _ in range(max_depth):
+        if current in child_to_parent:
+            parent = child_to_parent[current]
+            if parent == pred_label:
+                return True
+            current = parent
+        else:
+            break
+    
+    return False
+
+# Initialize hierarchy mapping
+CHILD_TO_PARENT = build_hierarchy_mapping()
 
 def evaluate_matches(matches):
     overlaps = opt['overlaps']
@@ -460,7 +518,6 @@ def make_pred_info(pred: dict):
         pred_info[uuid4()] = info  # we later need to identify these objects
     return pred_info
 
-
 def assign_instances_for_scan(pred: dict, gt_file: str):
     pred_info = make_pred_info(pred)
     try:
@@ -520,6 +577,82 @@ def assign_instances_for_scan(pred: dict, gt_file: str):
                 pred_copy['intersection'] = intersection
                 matched_gt.append(gt_copy)
                 gt2pred[label_name][gt_num]['matched_pred'].append(pred_copy)
+        pred_instance['matched_gt'] = matched_gt
+        num_pred_instances += 1
+        pred2gt[label_name].append(pred_instance)
+
+    return gt2pred, pred2gt
+
+
+def assign_instances_for_scan_hierarchical(pred: dict, gt_file: str):
+    pred_info = make_pred_info(pred)
+    try:
+        gt_ids = util_3d.load_ids(gt_file)
+    except Exception as e:
+        util.print_error('unable to load ' + gt_file + ': ' + str(e))
+        return {}, {}
+
+    # get gt instances
+    gt_instances = util_3d.get_instances(gt_ids, VALID_CLASS_IDS, CLASS_LABELS, ID_TO_LABEL)
+    
+    # associate
+    gt2pred = deepcopy(gt_instances)
+    for label in gt2pred:
+        for gt in gt2pred[label]:
+            gt['matched_pred'] = []
+    pred2gt = {}
+    for label in CLASS_LABELS:
+        pred2gt[label] = []
+    num_pred_instances = 0
+    # mask of void labels in the groundtruth
+    bool_void = np.logical_not(np.in1d(gt_ids // 1000, VALID_CLASS_IDS))
+    
+    # go thru all prediction masks
+    for uuid in pred_info:
+        label_id = int(pred_info[uuid]['label_id'])
+        conf = pred_info[uuid]['conf']
+        if not label_id in ID_TO_LABEL:
+            continue
+        
+        label_name = ID_TO_LABEL[label_id]
+        # read the mask
+        pred_mask = pred_info[uuid]['mask']
+        #print(pred_mask.shape , gt_ids.shape)
+        #print(len(pred_mask) , len(gt_ids))
+        assert (len(pred_mask) == len(gt_ids))
+        # convert to binary
+        pred_mask = np.not_equal(pred_mask, 0)
+        num = np.count_nonzero(pred_mask)
+        if num < opt['min_region_sizes'][0]:
+            continue  # skip if empty
+
+        pred_instance = {}
+        pred_instance['uuid'] = uuid
+        pred_instance['pred_id'] = num_pred_instances
+        pred_instance['label_id'] = label_id
+        pred_instance['vert_count'] = num
+        pred_instance['confidence'] = conf
+        pred_instance['void_intersection'] = np.count_nonzero(np.logical_and(bool_void, pred_mask))
+
+        # matched gt instances
+        matched_gt = []
+        # go thru all gt instances with matching label
+        for gt_label_name in CLASS_LABELS:
+            if not gt2pred[gt_label_name]:
+                continue
+            for (gt_num, gt_inst) in enumerate(gt2pred[gt_label_name]):
+                gt_actual_label = ID_TO_LABEL[gt_inst['label_id']]
+                
+                if is_hierarchical_match(gt_actual_label,label_name, CHILD_TO_PARENT):
+                    intersection = np.count_nonzero(np.logical_and(gt_ids == gt_inst['instance_id'], pred_mask))
+                
+                    if intersection > 0:
+                        gt_copy = gt_inst.copy()
+                        pred_copy = pred_instance.copy()
+                        gt_copy['intersection'] = intersection
+                        pred_copy['intersection'] = intersection
+                        matched_gt.append(gt_copy)
+                        gt2pred[gt_label_name][gt_num]['matched_pred'].append(pred_copy)
         pred_instance['matched_gt'] = matched_gt
         num_pred_instances += 1
         pred2gt[label_name].append(pred_instance)
@@ -875,6 +1008,7 @@ def evaluate(preds: dict, gt_path: str, output_file: str, dataset: str = "scanne
         matches_key = os.path.abspath(gt_file)
         # assign gt to predictions
         gt2pred, pred2gt = assign_instances_for_scan(v, gt_file)
+        #gt2pred, pred2gt = assign_instances_for_scan_hierarchical(v, gt_file)
         matches[matches_key] = {}
         matches[matches_key]['gt'] = gt2pred
         matches[matches_key]['pred'] = pred2gt
